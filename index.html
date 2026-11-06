@@ -87,8 +87,8 @@ body:has(.topbar[style*="none"]) {background:#101810}
 <script>
 const $=id=>document.getElementById(id);
 // Supabase: chave publishable. A chave secreta/service_role nunca deve ficar neste arquivo.
-const SUPABASE_URL = 'https://abotutbruqhlzldygsvn.supabase.co'; // URL do projeto configurada
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_7ODADfJMckUoc3dXUeV7OQ_L21xMEYz';
+const SUPABASE_URL = 'https://yogkvjpzbagpzwseirfw.supabase.co'; // URL do projeto configurada
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JNBImi0BvCacVcXoMkiU2A_rnyxtSL9';
 const SUPABASE_TABLE = 'consorcio_leads';
 const supabaseConfigured = () => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(SUPABASE_URL) && !SUPABASE_URL.includes('SEU-PROJETO') && !!SUPABASE_PUBLISHABLE_KEY;
 const supabaseEndpoint = () => SUPABASE_URL.replace(/\/$/,'') + '/rest/v1/' + encodeURIComponent(SUPABASE_TABLE);
