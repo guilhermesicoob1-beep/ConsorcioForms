@@ -44,6 +44,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
  <div class="login-card">
   <div class="brand">GESTÃO COMERCIAL</div><h1>Acesso administrativo</h1>
   <p class="muted">Entre para acompanhar os leads de consórcio.</p>
+  <p><a href="./">Voltar ao formulário</a></p>
   <form id="loginForm">
    <div class="field"><label for="username">Usuário</label><input id="username" type="text" autocomplete="username" required placeholder="Digite seu usuário"></div>
    <div class="field"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required placeholder="Digite sua senha"></div>
@@ -54,7 +55,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 
 <section id="appView">
- <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><span class="muted" id="welcome"></span><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
  <main class="wrap">
   <div id="dashboard">
    <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" onclick="showLeadForm()">＋ Abrir formulário</button></div></div>
@@ -73,11 +74,21 @@ body:has(.topbar[style*="none"]) {background:#101810}
  </main>
 </section>
 <div id="modalRoot"></div>
+<dialog id="accessSettings" class="form-card" aria-labelledby="accessTitle">
+ <h2 id="accessTitle">Alterar acesso</h2>
+ <form id="accessForm">
+  <div class="field"><label for="newUser">Novo usuário</label><input id="newUser" autocomplete="username" required></div>
+  <div class="field"><label for="currentPassword">Senha atual</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
+  <div class="field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required></div>
+  <p class="error" id="accessError" role="alert"></p>
+  <div class="actions"><button type="button" class="secondary" id="cancelAccess">Cancelar</button><button type="submit" class="primary">Salvar</button></div>
+ </form>
+</dialog>
 <script>
 const $=id=>document.getElementById(id);
 // Supabase: chave publishable. A chave secreta/service_role nunca deve ficar neste arquivo.
-const SUPABASE_URL = 'https://jgnkdtklmhbhfyqrzolw.supabase.co'; // URL do projeto configurada
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_gVSKRd2rjSzy1C8o8-BXgg_w0J5qKe-';
+const SUPABASE_URL = 'https://abotutbruqhlzldygsvn.supabase.co'; // URL do projeto configurada
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_7ODADfJMckUoc3dXUeV7OQ_L21xMEYz';
 const SUPABASE_TABLE = 'consorcio_leads';
 const supabaseConfigured = () => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(SUPABASE_URL) && !SUPABASE_URL.includes('SEU-PROJETO') && !!SUPABASE_PUBLISHABLE_KEY;
 const supabaseEndpoint = () => SUPABASE_URL.replace(/\/$/,'') + '/rest/v1/' + encodeURIComponent(SUPABASE_TABLE);
@@ -87,64 +98,178 @@ let signedIn=false;
 const getLeads=()=>leadsCache;
 const saveLeads=x=>{leadsCache=x;};
 let activePage='dashboard';
-async function apiRequest(url,options={}){
- const r=await fetch(url,options);
- if(!r.ok)throw new Error((await r.json()).message);
- return r.status===204?null:await r.json();
+let temporaryAccess = false;
+const sessionKey = 'crm_supabase_session_v1';
+async function adminRequest(action, data = {}){
+ const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/crm_admin_v1', {
+  method: 'POST',
+  headers: {apikey: SUPABASE_PUBLISHABLE_KEY, 'Content-Type':'application/json'},
+  body: JSON.stringify({action, token:sessionStorage.getItem(sessionKey), data})
+ });
+ if(!response.ok) throw new Error('Falha ao conectar ao painel. Confira se o SQL foi executado no Supabase.');
+ const result = await response.json();
+ if(result.active === false) sessionStorage.removeItem(sessionKey);
+ if(result.message && action !== 'session') throw new Error(result.message);
+ return result;
 }
 async function loadLeads(){
- if(!signedIn)return;
+ if(!signedIn || temporaryAccess)return;
  try{
- const rows=await apiRequest('/api/leads');
+ const rows=await adminRequest('leads');
  leadsCache=rows.map(r=>{
  const l={id:String(r.id),created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
  l.score=scoreLead(l);l.hot=l.score>=6;return l;
  });renderLeads();
  }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
 }
-function enterDashboard(){
+const accessSettings = $('accessSettings');
+const accessForm = $('accessForm');
+$('settingsButton').addEventListener('click', () => {
+ $('accessError').textContent = '';
+ accessSettings.showModal();
+});
+$('cancelAccess').addEventListener('click', () => accessSettings.close());
+accessSettings.addEventListener('close', () => accessForm.reset());
+accessForm.addEventListener('submit', async event => {
+ event.preventDefault();
+ const button = accessForm.querySelector('[type="submit"]');
+ const username = $('newUser').value.trim();
+ if(!username){
+  $('accessError').textContent = 'Informe o novo usuário.';
+  return;
+ }
+ button.disabled = true;
+ $('accessError').textContent = '';
+ try{
+  const result = await adminRequest('change', {
+   username,
+   currentPassword:$('currentPassword').value,
+   newPassword:$('newPassword').value
+  });
+  if(result?.updated !== true) throw new Error('O servidor não confirmou a alteração.');
+  sessionStorage.removeItem(sessionKey);
+  location.replace('?admin');
+ }catch(error){
+  $('accessError').textContent = error.message;
+ }finally{
+  button.disabled = false;
+ }
+});
+function enterDashboard(session){
+ temporaryAccess = session.temporary === true;
  signedIn=true;$('loginView').style.display='none';$('appView').style.display='block';
- $('password').value='';showDashboard();
+ $('password').value='';
+ if(temporaryAccess){
+  $('dashboard').classList.add('hidden');
+  $('newUser').value = 'adm';
+  $('accessError').textContent = 'Troque a senha inicial para liberar o painel.';
+  accessSettings.showModal();
+  return;
+ }
+ showDashboard();
 }
 $('loginForm').addEventListener('submit',async e=>{
  e.preventDefault();$('loginError').textContent='';
  const button=e.target.querySelector('button');button.disabled=true;
  try{
- await apiRequest('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});
- enterDashboard();
+ const session = await adminRequest('login', {username:$('username').value.trim(), password:$('password').value});
+ sessionStorage.setItem(sessionKey, session.token);
+ enterDashboard(session);
  }catch(err){$('loginError').textContent=err.message;}finally{button.disabled=false;}
 });
 async function logout(){
  try{
- await apiRequest('/api/session',{method:'DELETE'});
+ await adminRequest('logout');
  signedIn=false;leadsCache=[];$('appView').style.display='none';$('loginView').style.display='grid';
  }catch(err){alert(err.message);}
 }
 function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
-if(new URLSearchParams(location.search).has('form')){
+if(!new URLSearchParams(location.search).has('admin') || new URLSearchParams(location.search).has('form')){
  $('loginView').style.display='none';$('appView').style.display='block';document.querySelector('.topbar').style.display='none';showLeadForm();
-}else{apiRequest('/api/session').then(session=>{if(session.active)enterDashboard();}).catch(()=>{});}
+}else{adminRequest('session').then(session=>{if(session.active)enterDashboard(session);}).catch(error=>{$('loginError').textContent=error.message;});}
 function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden');$('formPage').classList.remove('hidden');$('formPage').innerHTML=`
- <div class="form-page"><header class="form-hero"><div class="brand">CONSÓRCIO</div><h1>Encontre o plano<br><em>ideal para você.</em></h1><p>Conte o que você quer conquistar. Nossa equipe entra em contato para conversar sobre as opções de consórcio.</p></header><div class="form-card">
+ <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>Encontre o plano<br><em>ideal para você.</em></h1><p>Conte o que você quer conquistar. Nossa equipe entra em contato para conversar sobre as opções de consórcio.</p></header><div class="form-card">
  <form id="leadForm">
   <div class="section"><div class="field"><label>Nome completo *</label><input name="name" required placeholder="Digite seu nome"></div>
   <div class="field"><label>Telefone com DDD *</label><div class="two"><input name="ddd" inputmode="numeric" maxlength="2" pattern="[0-9]{2}" placeholder="DDD" required aria-label="DDD"><input name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{8,9}" placeholder="Número de telefone" required aria-label="Número de telefone"></div><div class="hint">Informe o DDD separado do número.</div></div></div>
   <div class="section"><div class="field"><label>Qual bem deseja? *</label><div class="choices">
-   ${['Carro','Moto','Caminhão','Procedimento estético','Serviços','Outro'].map(x=>`<label class="choice"><input type="radio" name="asset" value="${x}" required onchange="toggleOther(this.form)"> ${x}</label>`).join('')}
+   ${['Carro','Moto','Caminhão','Procedimento estético','Serviços','Outro'].map(x=>`<label class="choice"><input type="radio" name="asset" value="${x}" required> ${x}</label>`).join('')}
   </div></div><div class="field hidden" id="otherWrap"><label>Qual outro bem ou serviço? *</label><input name="other" id="otherInput" placeholder="Descreva"></div>
   <div class="field"><label>Qual o valor do bem? (R$) *</label><input name="value" id="assetValue" inputmode="decimal" placeholder="Ex.: 80.000" required></div></div>
-  <div class="section"><div class="field"><label>Tem entrada? *</label><div class="choices"><label class="choice"><input type="radio" name="hasEntry" value="Sim" required onchange="toggleEntry(this.form)"> Sim</label><label class="choice"><input type="radio" name="hasEntry" value="Não" required onchange="toggleEntry(this.form)"> Não</label></div></div>
+  <div class="section"><div class="field"><label>Tem entrada? *</label><div class="choices"><label class="choice"><input type="radio" name="hasEntry" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="hasEntry" value="Não" required> Não</label></div></div>
   <div class="field hidden" id="entryWrap"><label>Qual o valor da entrada? (R$) *</label><input name="entry" id="entryValue" inputmode="decimal" placeholder="Ex.: 20.000"></div></div>
   <div class="section"><div class="field"><label>Qual a urgência para adquirir o bem? *</label><div class="choices"><label class="choice"><input type="radio" name="urgency" value="Urgente" required> Urgente</label><label class="choice"><input type="radio" name="urgency" value="Compra planejada" required> Compra planejada / futura</label></div></div></div>
   <div class="section"><div class="field"><label>Conhece como funciona o consórcio? *</label><div class="choices"><label class="choice"><input type="radio" name="knows" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="knows" value="Não" required> Não</label></div></div>
   <div class="field"><label>Qual seu interesse em contratar? *</label><div class="choices"><label class="choice"><input type="radio" name="intent" value="Quero contratar" required> Quero contratar</label><label class="choice"><input type="radio" name="intent" value="Estou pesquisando" required> Estou pesquisando</label></div></div></div>
-  <button class="primary" style="width:100%;margin-top:12px">Enviar formulário</button>
-  <p class="hint">* Todos os campos são obrigatórios.</p>
+  <div class="actions" style="margin-top:20px">
+   <button type="button" class="secondary" id="backQuestion">Voltar</button>
+   <button type="submit" class="primary" id="nextQuestion">Próxima</button>
+  </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
- $('leadForm').addEventListener('submit',submitLead);
+ setupQuestions($('leadForm'));
 }
-function toggleOther(form){const yes=form.asset.value==='Outro';$('otherWrap').classList.toggle('hidden',!yes);$('otherInput').required=yes;}
-function toggleEntry(form){const yes=form.hasEntry.value==='Sim';$('entryWrap').classList.toggle('hidden',!yes);$('entryValue').required=yes;}
+function setupQuestions(form){
+ const questions = Array.from(form.querySelectorAll('.field'));
+ const controls = $('backQuestion').parentElement;
+ const progress = document.createElement('p');
+ progress.className = 'hint';
+ progress.setAttribute('aria-live', 'polite');
+ form.prepend(progress);
+
+ for (const question of questions) form.insertBefore(question, controls);
+ form.querySelectorAll('.section').forEach(section => section.remove());
+
+ const applicable = () => questions.filter(question =>
+  (question.id !== 'otherWrap' || form.asset.value === 'Outro') &&
+  (question.id !== 'entryWrap' || form.hasEntry.value === 'Sim')
+ );
+ let current = questions[0];
+
+ function renderQuestion(focus){
+  const steps = applicable();
+  const index = steps.indexOf(current);
+  questions.forEach(question => question.classList.toggle('hidden', question !== current));
+  progress.textContent = 'Pergunta ' + (index + 1) + ' de ' + steps.length;
+  $('backQuestion').classList.toggle('hidden', index === 0);
+  $('nextQuestion').textContent = index === steps.length - 1 ? 'Enviar formulário' : 'Próxima';
+  if(focus){
+   current.tabIndex = -1;
+   current.focus();
+  }
+ }
+
+ $('backQuestion').addEventListener('click', () => {
+  const steps = applicable();
+  current = steps[steps.indexOf(current) - 1];
+  renderQuestion(true);
+ });
+
+ form.noValidate = true;
+ form.addEventListener('submit', event => {
+  event.preventDefault();
+  if($('nextQuestion').disabled) return;
+  for(const input of current.querySelectorAll('input')){
+   if(input.type !== 'radio' && !input.value.trim()){
+    input.setCustomValidity('Preencha este campo para continuar.');
+   }else if(input.inputMode === 'decimal' && moneyNumber(input.value) <= 0){
+    input.setCustomValidity('Informe um valor maior que zero.');
+   }
+   const valid = input.reportValidity();
+   input.setCustomValidity('');
+   if(!valid) return;
+  }
+  const steps = applicable();
+  const next = steps[steps.indexOf(current) + 1];
+  if(!next){
+   submitLead(event);
+   return;
+  }
+  current = next;
+  renderQuestion(true);
+ });
+
+ renderQuestion(false);
+}
 function moneyNumber(v){return Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0;}
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});}
 async function submitLead(e){
@@ -154,15 +279,15 @@ async function submitLead(e){
  if(fd.get('hasEntry')==='Sim'&&entry<=0){alert('Informe um valor de entrada válido.');return;}
  const lead={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),created:new Date().toISOString(),name:fd.get('name').trim(),ddd:fd.get('ddd'),phone:fd.get('phone'),asset:fd.get('asset')==='Outro'?fd.get('other').trim():fd.get('asset'),value:amount,hasEntry:fd.get('hasEntry'),entry,urgency:fd.get('urgency'),knows:fd.get('knows'),intent:fd.get('intent'),status:'new'};
  lead.score=scoreLead(lead);lead.hot=lead.score>=6;
- const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';}
+ const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
   const row={name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'};
-  const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
+  const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
   if(!response.ok){const detail=await response.text();throw new Error(supabaseError(response.status,detail));}
   if(signedIn)await loadLeads();
   $('formPage').innerHTML=`<div class="form-page"><div class="form-card" style="text-align:center;padding:40px 25px"><div style="font-size:42px;color:var(--green)">✓</div><h1>Formulário enviado!</h1><p class="muted">Obrigado pelo interesse. Nossa equipe poderá entrar em contato em breve.</p><button class="secondary" onclick="showLeadForm()">Novo formulário</button></div></div>`;
- }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent='Enviar formulário';}}
+ }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent='Enviar formulário';$('backQuestion').disabled=false;}}
 }
 function scoreLead(l){let s=0;if(l.urgency==='Compra planejada')s+=2;if(l.urgency==='Urgente')s+=1;if(l.knows==='Sim')s+=2;if(l.intent==='Quero contratar')s+=3;if(l.hasEntry==='Sim'&&l.value>0&&l.entry/l.value>=.5)s+=2;return s;}
 function renderLeads(){
@@ -208,7 +333,7 @@ function copyMessage(id){const l=getLeads().find(x=>x.id===id);if(l)navigator.cl
 async function setStatus(id,status){
  try{
  const dbStatus=status==='closed'?'Fechado':status==='responded'?'Em atendimento':'Novo';
- await apiRequest('/api/leads?id='+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:dbStatus})});
+ await adminRequest('status', {id, status:dbStatus});
  closeModal();await loadLeads();
  }catch(e){alert('Não foi possível atualizar o status: '+e.message);}
 }
