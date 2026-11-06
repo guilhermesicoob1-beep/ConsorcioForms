@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM de Leads | Consórcio</title>
+<style>
+:root{--green:#008b55;--green2:#00a86b;--dark:#15352b;--bg:#f3f6f4;--text:#20312a;--muted:#718078;--line:#e2e9e4;--white:#fff;--red:#c74343;--amber:#a66b00}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:11px 16px;font-weight:700}
+.primary{background:var(--green);color:white}.secondary{background:#e8f3ed;color:var(--dark)}.danger{background:#fff0f0;color:var(--red)}.small{padding:7px 10px;font-size:12px}
+#loginView{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#123c2e,#08784d)}
+.login-card{background:white;padding:34px;border-radius:20px;width:min(420px,100%);box-shadow:0 20px 60px #0003}.brand{font-size:13px;letter-spacing:2px;color:var(--green);font-weight:800}.login-card h1{margin:10px 0 6px}.muted{color:var(--muted);font-size:13px}
+.field{display:flex;flex-direction:column;gap:7px;margin:14px 0}.field label,.group-label{font-weight:700;font-size:13px}.field input,.field select,.field textarea,.search{border:1px solid var(--line);border-radius:10px;padding:12px;background:white;min-width:0;width:100%;outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green)}
+.error{color:var(--red);font-size:13px;min-height:18px}
+#appView{display:none}.topbar{background:white;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}.topbar strong{color:var(--green);letter-spacing:1px}.wrap{max-width:1180px;margin:26px auto;padding:0 18px}.heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.heading h1{margin:0 0 5px;font-size:26px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:22px 0}.stat,.panel,.form-card{background:white;border:1px solid var(--line);border-radius:15px;padding:18px}.stat span{font-size:12px;color:var(--muted)}.stat b{display:block;font-size:27px;margin-top:7px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.toolbar .search{max-width:330px}.toolbar select{padding:11px;border:1px solid var(--line);border-radius:10px;background:white}
+.table-wrap{overflow:auto;background:white;border:1px solid var(--line);border-radius:15px}table{width:100%;border-collapse:collapse;min-width:780px}th,td{text-align:left;padding:13px 14px;border-bottom:1px solid var(--line);font-size:13px}th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:#fafcfb}tr:last-child td{border-bottom:0}.tag{display:inline-block;border-radius:30px;padding:5px 9px;font-size:11px;font-weight:800;background:#edf1ee;color:#53635a}.tag.green{background:#ddf6e8;color:#08733f}.tag.orange{background:#fff1d6;color:#916000}.tag.red{background:#ffe5e5;color:#a83232}
+.empty{text-align:center;padding:35px;color:var(--muted)}.hidden{display:none!important}
+.form-page{max-width:680px;margin:30px auto;padding:0 16px}.form-card{padding:26px}.form-card h1{margin:5px 0}.form-card .intro{color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:22px}.two{display:grid;grid-template-columns:110px 1fr;gap:10px}.choices{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}.choice{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;background:white}.choice:has(input:checked){border-color:var(--green);background:#effaf4}.choice input{accent-color:var(--green)}.section{padding:14px 0;border-top:1px solid var(--line)}.section:first-of-type{border-top:0}.section .field{margin:10px 0}.hint{font-size:12px;color:var(--muted);margin-top:5px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.detail{background:#f7faf8;padding:12px;border-radius:10px}.detail small{display:block;color:var(--muted);margin-bottom:5px}.detail b{font-size:14px;overflow-wrap:anywhere}.modal-bg{position:fixed;inset:0;background:#10251dcc;display:grid;place-items:center;padding:16px;z-index:10}.modal{background:white;border-radius:16px;width:min(700px,100%);max-height:90vh;overflow:auto;padding:22px}.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.modal h2{margin:0}.close{background:#eef2ef;padding:7px 11px}.message{white-space:pre-wrap;background:#f6f8f6;padding:14px;border-radius:10px;font-size:13px;line-height:1.5}.footer-note{text-align:center;color:var(--muted);font-size:11px;margin:18px}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.topbar{padding:12px 15px}.wrap{margin:18px auto}.detail-grid{grid-template-columns:1fr}.form-card{padding:19px}}
+
+#loginView,.form-page{background:radial-gradient(ellipse at 8% 0%,#356c2a 0%,transparent 45%),#101810}
+#loginView .login-card{border:1px solid #a0d391;border-radius:26px}
+#loginView .primary,.form-page .primary{border-radius:999px;background:#a9fa89;color:#142511;box-shadow:0 4px 18px #67dc5550;min-height:46px}
+#loginView .primary:hover,.form-page .primary:hover{background:#bdffa4}
+.form-page{max-width:860px;padding:clamp(14px,4vw,34px);border-radius:30px;color:#f4fff1;overflow:hidden}
+.form-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(20px,5vw,48px) clamp(10px,4vw,30px)}
+.form-hero::after{content:'';position:absolute;z-index:-1;width:330px;height:330px;right:-65px;top:-130px;border:1px dashed #83d46a66;border-radius:50%;box-shadow:0 0 0 28px #8af0710c,0 0 0 60px #8af07109,inset 0 0 95px #75e45544}
+.form-hero .brand{display:inline-block;background:#a9fa89;color:#142511;border-radius:999px;padding:8px 15px;font-size:11px}
+.form-hero h1{font-size:clamp(32px,6vw,60px);letter-spacing:-.045em;line-height:1.04;margin:18px 0 12px}
+.form-hero em{font-style:normal;color:#a9fa89}
+.form-hero p{max-width:420px;color:#d4e5d0;line-height:1.55;margin:0}
+.form-page .form-card{color:#172518;border-radius:24px;padding:clamp(16px,4vw,36px)}
+.form-page .choice{background:#f1f8ee;border-radius:999px;min-height:42px;cursor:pointer}
+.form-page .choice:has(input:checked){background:#c8ffb6;border-color:#477b39}
+.form-page .footer-note{color:#c5d9bf}
+body:has(.topbar[style*="none"]) {background:#101810}
+@media(max-width:480px){.form-page{margin:0 auto;border-radius:20px}.two{grid-template-columns:64px minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<section id="loginView">
+ <div class="login-card">
+  <div class="brand">GESTÃO COMERCIAL</div><h1>Acesso administrativo</h1>
+  <p class="muted">Entre para acompanhar os leads de consórcio.</p>
+  <p><a href="./">Voltar ao formulário</a></p>
+  <form id="loginForm">
+   <div class="field"><label for="username">Usuário</label><input id="username" type="text" autocomplete="username" required placeholder="Digite seu usuário"></div>
+   <div class="field"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required placeholder="Digite sua senha"></div>
+   <div id="loginError" class="error"></div><button class="primary" style="width:100%">Entrar</button>
+  </form>
+
+ </div>
+</section>
+
+<section id="appView">
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <main class="wrap">
+  <div id="dashboard">
+   <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" onclick="showLeadForm()">＋ Abrir formulário</button></div></div>
+   <div class="stats">
+    <div class="stat"><span>Formulários gerados</span><b id="countGenerated">0</b></div>
+    <div class="stat"><span>Respondidos / em atendimento</span><b id="countResponded">0</b></div>
+    <div class="stat"><span>Fechados</span><b id="countClosed">0</b></div>
+    <div class="stat"><span>Leads propensos</span><b id="countHot">0</b></div>
+   </div>
+   <div class="panel" style="margin-bottom:14px"><b>Relatório de formulários</b><p class="muted" style="margin-bottom:0">Os indicadores são atualizados automaticamente conforme os formulários são enviados e os leads são movimentados.</p></div>
+   <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Leads planejados aparecem antes dos urgentes; dentro de cada grupo, os mais propensos ficam no topo.</div></div></div>
+   <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="hot">Somente propensos</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
+   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th>Urgência</th><th>Interesse</th><th>Classificação</th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
+  </div>
+  <div id="formPage" class="hidden"></div>
+ </main>
+</section>
+<div id="modalRoot"></div>
+<dialog id="accessSettings" class="form-card" aria-labelledby="accessTitle">
+ <h2 id="accessTitle">Alterar acesso</h2>
+ <form id="accessForm">
+  <div class="field"><label for="newUser">Novo usuário</label><input id="newUser" autocomplete="username" required></div>
+  <div class="field"><label for="currentPassword">Senha atual</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
+  <div class="field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required></div>
+  <p class="error" id="accessError" role="alert"></p>
+  <div class="actions"><button type="button" class="secondary" id="cancelAccess">Cancelar</button><button type="submit" class="primary">Salvar</button></div>
+ </form>
+</dialog>
+<script>
+const $=id=>document.getElementById(id);
+// Supabase: chave publishable. A chave secreta/service_role nunca deve ficar neste arquivo.
+const SUPABASE_URL = 'https://abotutbruqhlzldygsvn.supabase.co'; // URL do projeto configurada
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_7ODADfJMckUoc3dXUeV7OQ_L21xMEYz';
+const SUPABASE_TABLE = 'consorcio_leads';
+const supabaseConfigured = () => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(SUPABASE_URL) && !SUPABASE_URL.includes('SEU-PROJETO') && !!SUPABASE_PUBLISHABLE_KEY;
+const supabaseEndpoint = () => SUPABASE_URL.replace(/\/$/,'') + '/rest/v1/' + encodeURIComponent(SUPABASE_TABLE);
+function supabaseError(status, detail){let info;try{info=JSON.parse(detail)}catch{info={message:detail}};const message=info.message||detail||'Erro desconhecido';if(status===401)return 'Chave pública inválida ou projeto incorreto. '+message;if(status===403)return 'A política RLS não permite inserir registros. '+message;if(status===404)return 'Tabela não encontrada ou API indisponível. '+message;if(info.code==='42P01')return 'A tabela consorcio_leads não existe no schema public. '+message;if(info.code==='42703'||info.code==='PGRST204')return 'A estrutura da tabela não corresponde aos campos do formulário. '+message;return 'Supabase ('+status+'): '+message;}
+let leadsCache=[];
+let signedIn=false;
+const getLeads=()=>leadsCache;
+const saveLeads=x=>{leadsCache=x;};
+let activePage='dashboard';
+async function apiRequest(url,options={}){
+ const r=await fetch(url,options);
+ if(!r.ok){
+  const error=await r.json().catch(()=>null);
+  throw new Error(error?.message || 'A função do painel não está disponível.');
+ }
+ return r.status===204?null:await r.json();
+}
+async function loadLeads(){
+ if(!signedIn)return;
+ try{
+ const rows=await apiRequest('/api/leads');
+ leadsCache=rows.map(r=>{
+ const l={id:String(r.id),created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
+ l.score=scoreLead(l);l.hot=l.score>=6;return l;
+ });renderLeads();
+ }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
+}
+const accessSettings = $('accessSettings');
+const accessForm = $('accessForm');
+$('settingsButton').addEventListener('click', () => {
+ $('accessError').textContent = '';
+ accessSettings.showModal();
+});
+$('cancelAccess').addEventListener('click', () => accessSettings.close());
+accessSettings.addEventListener('close', () => accessForm.reset());
+accessForm.addEventListener('submit', async event => {
+ event.preventDefault();
+ const button = accessForm.querySelector('[type="submit"]');
+ const username = $('newUser').value.trim();
+ if(!username){
+  $('accessError').textContent = 'Informe o novo usuário.';
+  return;
+ }
+ button.disabled = true;
+ $('accessError').textContent = '';
+ try{
+  const result = await apiRequest('/api/session', {
+   method:'PATCH',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({
+    username,
+    currentPassword:$('currentPassword').value,
+    newPassword:$('newPassword').value
+   })
+  });
+  if(result?.updated !== true) throw new Error('O servidor não confirmou a alteração.');
+  location.replace('?admin');
+ }catch(error){
+  $('accessError').textContent = error.message;
+ }finally{
+  button.disabled = false;
+ }
+});
+function enterDashboard(){
+ signedIn=true;$('loginView').style.display='none';$('appView').style.display='block';
+ $('password').value='';showDashboard();
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();$('loginError').textContent='';
+ const button=e.target.querySelector('button');button.disabled=true;
+ try{
+ await apiRequest('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});
+ enterDashboard();
+ }catch(err){$('loginError').textContent=err.message;}finally{button.disabled=false;}
+});
+async function logout(){
+ try{
+ await apiRequest('/api/session',{method:'DELETE'});
+ signedIn=false;leadsCache=[];$('appView').style.display='none';$('loginView').style.display='grid';
+ }catch(err){alert(err.message);}
+}
+function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
+if(!new URLSearchParams(location.search).has('admin') || new URLSearchParams(location.search).has('form')){
+ $('loginView').style.display='none';$('appView').style.display='block';document.querySelector('.topbar').style.display='none';showLeadForm();
+}else{apiRequest('/api/session').then(session=>{if(session.active)enterDashboard();}).catch(()=>{});}
+function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden');$('formPage').classList.remove('hidden');$('formPage').innerHTML=`
+ <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>Encontre o plano<br><em>ideal para você.</em></h1><p>Conte o que você quer conquistar. Nossa equipe entra em contato para conversar sobre as opções de consórcio.</p></header><div class="form-card">
+ <form id="leadForm">
+  <div class="section"><div class="field"><label>Nome completo *</label><input name="name" required placeholder="Digite seu nome"></div>
+  <div class="field"><label>Telefone com DDD *</label><div class="two"><input name="ddd" inputmode="numeric" maxlength="2" pattern="[0-9]{2}" placeholder="DDD" required aria-label="DDD"><input name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{8,9}" placeholder="Número de telefone" required aria-label="Número de telefone"></div><div class="hint">Informe o DDD separado do número.</div></div></div>
+  <div class="section"><div class="field"><label>Qual bem deseja? *</label><div class="choices">
+   ${['Carro','Moto','Caminhão','Procedimento estético','Serviços','Outro'].map(x=>`<label class="choice"><input type="radio" name="asset" value="${x}" required> ${x}</label>`).join('')}
+  </div></div><div class="field hidden" id="otherWrap"><label>Qual outro bem ou serviço? *</label><input name="other" id="otherInput" placeholder="Descreva"></div>
+  <div class="field"><label>Qual o valor do bem? (R$) *</label><input name="value" id="assetValue" inputmode="decimal" placeholder="Ex.: 80.000" required></div></div>
+  <div class="section"><div class="field"><label>Tem entrada? *</label><div class="choices"><label class="choice"><input type="radio" name="hasEntry" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="hasEntry" value="Não" required> Não</label></div></div>
+  <div class="field hidden" id="entryWrap"><label>Qual o valor da entrada? (R$) *</label><input name="entry" id="entryValue" inputmode="decimal" placeholder="Ex.: 20.000"></div></div>
+  <div class="section"><div class="field"><label>Qual a urgência para adquirir o bem? *</label><div class="choices"><label class="choice"><input type="radio" name="urgency" value="Urgente" required> Urgente</label><label class="choice"><input type="radio" name="urgency" value="Compra planejada" required> Compra planejada / futura</label></div></div></div>
+  <div class="section"><div class="field"><label>Conhece como funciona o consórcio? *</label><div class="choices"><label class="choice"><input type="radio" name="knows" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="knows" value="Não" required> Não</label></div></div>
+  <div class="field"><label>Qual seu interesse em contratar? *</label><div class="choices"><label class="choice"><input type="radio" name="intent" value="Quero contratar" required> Quero contratar</label><label class="choice"><input type="radio" name="intent" value="Estou pesquisando" required> Estou pesquisando</label></div></div></div>
+  <div class="actions" style="margin-top:20px">
+   <button type="button" class="secondary" id="backQuestion">Voltar</button>
+   <button type="submit" class="primary" id="nextQuestion">Próxima</button>
+  </div>
+ </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
+ setupQuestions($('leadForm'));
+}
+function setupQuestions(form){
+ const questions = Array.from(form.querySelectorAll('.field'));
+ const controls = $('backQuestion').parentElement;
+ const progress = document.createElement('p');
+ progress.className = 'hint';
+ progress.setAttribute('aria-live', 'polite');
+ form.prepend(progress);
+
+ for (const question of questions) form.insertBefore(question, controls);
+ form.querySelectorAll('.section').forEach(section => section.remove());
+
+ const applicable = () => questions.filter(question =>
+  (question.id !== 'otherWrap' || form.asset.value === 'Outro') &&
+  (question.id !== 'entryWrap' || form.hasEntry.value === 'Sim')
+ );
+ let current = questions[0];
+
+ function renderQuestion(focus){
+  const steps = applicable();
+  const index = steps.indexOf(current);
+  questions.forEach(question => question.classList.toggle('hidden', question !== current));
+  progress.textContent = 'Pergunta ' + (index + 1) + ' de ' + steps.length;
+  $('backQuestion').classList.toggle('hidden', index === 0);
+  $('nextQuestion').textContent = index === steps.length - 1 ? 'Enviar formulário' : 'Próxima';
+  if(focus){
+   current.tabIndex = -1;
+   current.focus();
+  }
+ }
+
+ $('backQuestion').addEventListener('click', () => {
+  const steps = applicable();
+  current = steps[steps.indexOf(current) - 1];
+  renderQuestion(true);
+ });
+
+ form.noValidate = true;
+ form.addEventListener('submit', event => {
+  event.preventDefault();
+  if($('nextQuestion').disabled) return;
+  for(const input of current.querySelectorAll('input')){
+   if(input.type !== 'radio' && !input.value.trim()){
+    input.setCustomValidity('Preencha este campo para continuar.');
+   }else if(input.inputMode === 'decimal' && moneyNumber(input.value) <= 0){
+    input.setCustomValidity('Informe um valor maior que zero.');
+   }
+   const valid = input.reportValidity();
+   input.setCustomValidity('');
+   if(!valid) return;
+  }
+  const steps = applicable();
+  const next = steps[steps.indexOf(current) + 1];
+  if(!next){
+   submitLead(event);
+   return;
+  }
+  current = next;
+  renderQuestion(true);
+ });
+
+ renderQuestion(false);
+}
+function moneyNumber(v){return Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0;}
+function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});}
+async function submitLead(e){
+ e.preventDefault();const f=e.target,fd=new FormData(f);
+ const amount=moneyNumber(fd.get('value')),entry=fd.get('hasEntry')==='Sim'?moneyNumber(fd.get('entry')):0;
+ if(amount<=0){alert('Informe um valor válido para o bem.');return;}
+ if(fd.get('hasEntry')==='Sim'&&entry<=0){alert('Informe um valor de entrada válido.');return;}
+ const lead={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),created:new Date().toISOString(),name:fd.get('name').trim(),ddd:fd.get('ddd'),phone:fd.get('phone'),asset:fd.get('asset')==='Outro'?fd.get('other').trim():fd.get('asset'),value:amount,hasEntry:fd.get('hasEntry'),entry,urgency:fd.get('urgency'),knows:fd.get('knows'),intent:fd.get('intent'),status:'new'};
+ lead.score=scoreLead(lead);lead.hot=lead.score>=6;
+ const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
+ try{
+  if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
+  const row={name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'};
+  const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
+  if(!response.ok){const detail=await response.text();throw new Error(supabaseError(response.status,detail));}
+  if(signedIn)await loadLeads();
+  $('formPage').innerHTML=`<div class="form-page"><div class="form-card" style="text-align:center;padding:40px 25px"><div style="font-size:42px;color:var(--green)">✓</div><h1>Formulário enviado!</h1><p class="muted">Obrigado pelo interesse. Nossa equipe poderá entrar em contato em breve.</p><button class="secondary" onclick="showLeadForm()">Novo formulário</button></div></div>`;
+ }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent='Enviar formulário';$('backQuestion').disabled=false;}}
+}
+function scoreLead(l){let s=0;if(l.urgency==='Compra planejada')s+=2;if(l.urgency==='Urgente')s+=1;if(l.knows==='Sim')s+=2;if(l.intent==='Quero contratar')s+=3;if(l.hasEntry==='Sim'&&l.value>0&&l.entry/l.value>=.5)s+=2;return s;}
+function renderLeads(){
+ const all=getLeads();$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.hot).length;
+ const q=($('search')?.value||'').toLowerCase(),filter=$('filter')?.value||'all';
+ let rows=all.filter(l=>(l.name+' '+l.ddd+l.phone).toLowerCase().includes(q));
+ if(filter==='hot')rows=rows.filter(l=>l.hot);else if(filter!=='all')rows=rows.filter(l=>l.status===filter);
+ rows.sort((a,b)=>{const urg=(x)=>x.urgency==='Compra planejada'?0:1;return urg(a)-urg(b)||b.score-a.score||new Date(b.created)-new Date(a.created);});
+ $('leadRows').innerHTML=rows.map(l=>`<tr>
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':'<span class="tag orange">Urgente</span>'}</td><td>${esc(l.intent)}</td><td>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
+ $('empty').classList.toggle('hidden',rows.length>0);
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function statusTag(s){return s==='closed'?'<span class="tag red">Fechado</span>':s==='responded'?'<span class="tag orange">Em atendimento</span>':'<span class="tag">Novo</span>';}
+function makeMessage(l){
+ const first=l.name.split(' ')[0],ratio=l.value?l.entry/l.value:0;
+ let body;
+ if(l.urgency==='Urgente'&&l.hasEntry==='Sim'&&ratio<.5){
+ body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio. Pelo prazo em que você precisa adquirir o bem e considerando o valor de entrada informado, talvez o financiamento seja uma alternativa mais adequada. Você gostaria de receber uma proposta de consórcio ou prefere conhecer uma opção de financiamento?`;
+ }else if(l.urgency==='Urgente'&&l.hasEntry==='Sim'&&ratio>=.6){
+ body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio. Com o valor de entrada que você possui, pode existir a possibilidade de ofertar um lance e antecipar uma eventual contemplação. É importante lembrar que não há garantia de contemplação, pois ela depende das regras e dos resultados do grupo. Gostaria de receber uma proposta de consórcio ou conhecer uma opção de financiamento?`;
+ }else{
+ body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio e estou entrando em contato para entender melhor o que você procura. Você deseja receber uma simulação e conhecer as opções disponíveis para ${l.asset.toLowerCase()}? Posso te ajudar!`;
+ }
+ return body;
+}
+function showDetails(id){
+ const l=getLeads().find(x=>x.id===id);if(!l)return;
+ const phone='55'+l.ddd+l.phone.replace(/\D/g,'');const msg=makeMessage(l);const wa='https://wa.me/'+phone+'?text='+encodeURIComponent(msg);
+ $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><h2>${esc(l.name)}</h2><span class="muted">Lead recebido em ${new Date(l.created).toLocaleString('pt-BR')}</span></div><button class="close" onclick="closeModal()">✕</button></div>
+ <p>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'} &nbsp; ${statusTag(l.status)}</p>
+ <div class="detail-grid">
+ ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${detail('Pontuação de interesse',l.score+' pontos')}
+ </div>
+ <h3 style="font-size:15px;margin:20px 0 8px">Mensagem personalizada para WhatsApp</h3><div class="message">${esc(msg)}</div>
+ <div class="actions" style="margin-top:16px"><button class="primary" onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
+ </div></div>`;
+}
+function detail(k,v){return `<div class="detail"><small>${k}</small><b>${esc(v)}</b></div>`;}
+function closeModal(){$('modalRoot').innerHTML='';}
+function openWhatsApp(id){const l=getLeads().find(x=>x.id===id);if(!l)return;const url='https://wa.me/55'+l.ddd+l.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(makeMessage(l));window.open(url,'_blank');if(l.status==='new')setStatus(id,'responded');}
+function copyMessage(id){const l=getLeads().find(x=>x.id===id);if(l)navigator.clipboard?.writeText(makeMessage(l)).then(()=>alert('Mensagem copiada.')).catch(()=>alert(makeMessage(l)));}
+async function setStatus(id,status){
+ try{
+ const dbStatus=status==='closed'?'Fechado':status==='responded'?'Em atendimento':'Novo';
+ await apiRequest('/api/leads?id='+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:dbStatus})});
+ closeModal();await loadLeads();
+ }catch(e){alert('Não foi possível atualizar o status: '+e.message);}
+}
+setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
+</script>
+</body>
+</html>
