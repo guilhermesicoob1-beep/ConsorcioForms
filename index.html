@@ -37,6 +37,21 @@ button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;border-
 .form-page .footer-note{color:#c5d9bf}
 body:has(.topbar[style*="none"]) {background:#101810}
 @media(max-width:480px){.form-page{margin:0 auto;border-radius:20px}.two{grid-template-columns:64px minmax(0,1fr)}}
+
+/* Refined management interface */
+#formEditor{width:min(900px,96vw);max-width:96vw;border:1px solid #dce8e1;border-radius:22px;box-shadow:0 30px 90px #082d2440;padding:30px}
+#formEditor::backdrop,#formList::backdrop{background:#09241bb8;backdrop-filter:blur(5px)}
+#formEditor h2{font-size:25px;letter-spacing:-.03em}#formEditor h3{margin:28px 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line);color:#123e32}
+#formEditor fieldset{border:1px solid #dce8e1;border-radius:17px;padding:20px!important;background:#fbfdfb;position:relative}
+#formEditor legend{font-weight:800;color:#08724f;padding:0 10px}#formEditor fieldset label{font-size:13px;font-weight:650}
+#formEditor fieldset select,#formEditor fieldset input:not([type=checkbox]),#formEditor .appearance-options input,#formEditor .appearance-options select{border:1px solid #dce8e1;border-radius:10px;padding:10px;background:#fff;max-width:100%}
+#formEditor fieldset p{margin:12px 0}#formEditor .field input{min-height:43px}
+.editor-steps{display:flex;gap:8px;flex-wrap:wrap;margin:17px 0}.editor-steps span{padding:8px 12px;border-radius:30px;background:#eaf5ee;color:#236a4e;font-size:12px;font-weight:750}
+.appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:#f6faf7;border:1px solid #e2ece6;padding:16px;border-radius:16px}.appearance-options .field{margin:0}.toggle-row{grid-column:1/-1;display:flex;align-items:center;gap:9px;font-size:13px}.toggle-row input{accent-color:#008b55}.appearance-preview{height:75px;border-radius:13px;margin-top:12px;display:grid;place-items:center;color:white;text-shadow:0 1px 4px #0008;font-weight:700}
+.public-banner{transition:filter .35s ease,box-shadow .35s ease,transform .35s ease}.glow-banner:hover{filter:brightness(1.12);box-shadow:0 0 32px #a4ff9870;transform:translateY(-2px)}
+.sorting-panel{margin-bottom:15px}.sort-row{display:flex;align-items:center;gap:8px;margin:9px 0}.sort-row select{min-width:0;flex:1;border:1px solid var(--line);border-radius:9px;padding:10px;background:white}.sort-number{display:grid;place-items:center;min-width:27px;height:27px;background:#e3f5e9;border-radius:50%;font-size:12px;font-weight:800}
+.editor-tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin:18px 0;padding-bottom:10px}.editor-tab{background:#f0f5f1;color:#355547}.editor-tab.active{background:#008b55;color:white}.reply-item{padding:15px;border:1px solid var(--line);border-radius:13px;margin:10px 0}.reply-item p{white-space:pre-wrap}
+@media(max-width:650px){.appearance-options{grid-template-columns:1fr}.sort-row{flex-wrap:wrap}.sort-row select{flex-basis:35%}#formEditor{padding:17px}}
 </style>
 </head>
 <body>
@@ -62,12 +77,13 @@ body:has(.topbar[style*="none"]) {background:#101810}
     <div class="stat"><span>Formulários gerados</span><b id="countGenerated">0</b></div>
     <div class="stat"><span>Respondidos / em atendimento</span><b id="countResponded">0</b></div>
     <div class="stat"><span>Fechados</span><b id="countClosed">0</b></div>
-    <div class="stat"><span>Leads propensos</span><b id="countHot">0</b></div>
+    <div class="stat"><span>Novos leads</span><b id="countHot">0</b></div>
    </div>
    <div class="panel" style="margin-bottom:14px"><b>Relatório de formulários</b><p class="muted" style="margin-bottom:0">Os indicadores são atualizados automaticamente conforme os formulários são enviados e os leads são movimentados.</p></div>
-   <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Leads planejados aparecem antes dos urgentes; dentro de cada grupo, os mais propensos ficam no topo.</div></div></div>
-   <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="hot">Somente propensos</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
-   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th>Urgência</th><th>Interesse</th><th>Classificação</th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
+   <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Defina a prioridade dos critérios e a direção da ordenação.</div></div></div>
+   <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
+   <div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
+   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th>Urgência</th><th>Interesse</th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
   </div>
   <div id="formPage" class="hidden"></div>
  </main>
@@ -75,11 +91,11 @@ body:has(.topbar[style*="none"]) {background:#101810}
 <div id="modalRoot"></div>
 <dialog id="formList" class="form-card" aria-labelledby="formListTitle" style="max-height:85vh;overflow:auto">
  <h2 id="formListTitle">Formulários</h2>
- <div id="publishedForms"></div>
+ <div class="editor-tabs"><button type="button" class="editor-tab active" onclick="switchManagementTab('forms')" id="tabForms">Formulários</button><button type="button" class="editor-tab" onclick="switchManagementTab('messages')" id="tabMessages">Respostas rápidas</button></div><div id="publishedForms"></div><div id="quickRepliesPanel" class="hidden"><p class="muted">Crie mensagens para selecionar no atendimento de cada lead. Use {nome}, {bem}, {valor}, {urgencia} e {interesse} para personalizar.</p><div id="quickRepliesList"></div><button class="secondary" type="button" onclick="editQuickReply()">+ Nova resposta rápida</button></div>
  <div class="actions"><button class="secondary" id="closeFormList" type="button">Fechar</button><button class="primary" id="createFormButton" type="button">Criar formulário</button></div>
 </dialog>
 <dialog id="formEditor" class="form-card" aria-labelledby="formEditorTitle" style="max-height:85vh;overflow:auto">
- <h2 id="formEditorTitle">Criar e editar formulário</h2>
+ <h2 id="formEditorTitle">Criar e editar formulário</h2><div class="editor-steps"><span>01 · Aparência</span><span>02 · Perguntas</span><span>03 · Publicação</span></div>
  <p id="editorDescription"></p>
  <form id="formSettings">
   <div id="formEditorFields"></div>
@@ -138,13 +154,7 @@ const defaultConfig = {
  cover:'', next:'Próxima', back:'Voltar', send:'Enviar formulário',
  questions:baseQuestions, extra:[],
  rules:{other:'Outro', entry:'Sim'},
- score:{planned:2, urgent:1, knows:2, wants:3, entry:2, percent:50, hot:6}
-};
-const scoreLabels = {
- planned:'Pontos para compra planejada', urgent:'Pontos para compra urgente',
- knows:'Pontos se conhece consórcio', wants:'Pontos se quer contratar',
- entry:'Pontos pela entrada', percent:'Percentual mínimo de entrada para pontuar',
- hot:'Pontuação mínima para lead propenso'
+ backgroundMode:"solid",gradientEnd:"#003641",gradientAngle:135,extendBanner:false,bannerGlow:false
 };
 let config = structuredClone(defaultConfig);
 let configAvailable = false;
@@ -374,21 +384,23 @@ function renderFormEditor(draft){
  '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
- '<h3>Perguntas do formulário</h3>'+
+  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow?'checked':'')+'> Brilho suave ao passar o mouse sobre o banner</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
+  '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
  '<p><label>Mostrar valor da entrada <select name="rule-entry">'+options(['Sim','Sempre'],draft.rules.entry)+'</select></label></p>' : '')+
- '<p class="hint">Use os campos do CRM para aproveitar o WhatsApp, a pontuação e as condições por percentual.</p>'+
+ '<p class="hint">Associe perguntas aos campos do CRM para preencher automaticamente os dados dos leads.</p>'+
  '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
- '<h3>Pontuação</h3>'+
- Object.keys(scoreLabels).map(key => editField(scoreLabels[key],'score-'+key,draft.score[key],
- 'required type="number" min="0" max="'+(key==='percent'?100:1000)+'"')).join('');
+ '';
  const picker=$('edit-background'), hex=$('backgroundHex');
  picker.oninput=()=>{hex.value=picker.value.toUpperCase();};
  hex.oninput=()=>{
   if(/^#?[0-9a-f]{6}$/i.test(hex.value)) picker.value='#'+hex.value.replace('#','');
  };
- updateBannerPreview();
+  $('backgroundMode').value=draft.backgroundMode||'solid';
+  const previewAppearance=()=>{const a=$('appearancePreview');if(a)a.style.background=$('backgroundMode').value==='gradient'?`linear-gradient(${$('[name=gradientAngle]').value}deg, ${picker.value}, ${$('gradientEnd').value})`:picker.value;};
+  editor.querySelectorAll('[name=backgroundMode],[name=gradientEnd],[name=gradientAngle],#edit-background,#backgroundHex').forEach(el=>el.addEventListener('input',previewAppearance));previewAppearance();
+  updateBannerPreview();
  const uploader=$('bannerUpload'), remove=$('removeBanner');
  const submit=$('formSettings').querySelector('[type="submit"]');
  remove.onclick=()=>{editorBanner='';uploader.value='';updateBannerPreview();};
@@ -477,6 +489,7 @@ $('closeEditor').onclick = ()=>$('formEditor').close();
 $('formEditor').addEventListener('close',()=>{
  if(signedIn && !temporaryAccess){
   renderFormList();
+  switchManagementTab('forms');
   $('formList').showModal();
  }
 });
@@ -501,13 +514,13 @@ $('formSettings').onsubmit = async event => {
   return;
  }
  const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),
-  cover:editorBanner,background:fields.get('background'),imageHeader:true,
+  cover:editorBanner,background:fields.get('background'),backgroundMode:fields.get('backgroundMode'),gradientEnd:fields.get('gradientEnd'),gradientAngle:Number(fields.get('gradientAngle')),extendBanner:fields.get('extendBanner')==='on',bannerGlow:fields.get('bannerGlow')==='on',imageHeader:true,
   custom:!editorLegacy,next:'Próxima',back:'Voltar',send:'Enviar formulário'};
  if(editorLegacy){
   draft.questions=Object.fromEntries(Object.keys(baseQuestions).map(key=>[key,fields.get('legacy-'+key).trim()]));
   draft.rules={other:fields.get('rule-other'),entry:fields.get('rule-entry')};
  }
- draft.score = Object.fromEntries(Object.keys(scoreLabels).map(key=>[key,Number(fields.get('score-'+key))]));
+
  draft.extra = extra;
  button.disabled = true;
  try{
@@ -533,8 +546,7 @@ async function loadLeads(){
  leadsCache=rows.map(r=>{
  const l={id:String(r.id),formId:r.form_id || 'principal',created:r.created_at,name:r.name||'Lead sem nome',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
  l.answers=Array.isArray(r.form_answers)?r.form_answers.filter(item=>typeof item?.question==='string' && typeof item.answer==='string'):[];
- const weights = normalizeForm(forms[l.formId]).score;
- l.score=scoreLead(l,weights);l.hot=l.score>=weights.hot;return l;
+ return l;
  });renderLeads();
  }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
 }
@@ -642,13 +654,14 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
  if(config.custom || config.imageHeader){
   const page = document.querySelector('.form-page');
   const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#101810';
-  document.body.style.background = color;
-  page.style.background = color;
+  const background=config.backgroundMode==='gradient'?`linear-gradient(${Number(config.gradientAngle)||135}deg,${color},${/^#[0-9a-f]{6}$/i.test(config.gradientEnd)?config.gradientEnd:'#003641'})`:color;
+  document.body.style.background=background;page.style.background=background;
+  if(config.extendBanner && isBanner(config.cover)){page.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;page.style.backgroundSize='cover';page.style.backgroundPosition='center top';}
   const header = document.querySelector('.form-hero');
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
-   banner.alt='';
+   banner.alt='';banner.className='public-banner'+(config.bannerGlow?' glow-banner':'');
    banner.style.cssText='display:block;width:100%;height:auto;border-radius:16px;margin-bottom:18px';
    header.replaceWith(banner);
   }else header.remove();
@@ -857,22 +870,16 @@ async function submitLead(e, answers){
   $('formPage').innerHTML=`<div class="form-page"><div class="form-card" style="text-align:center;padding:40px 25px"><div style="font-size:42px;color:var(--green)">✓</div><h1>Formulário enviado!</h1><p class="muted">Obrigado pelo interesse. Nossa equipe poderá entrar em contato em breve.</p><button class="secondary" onclick="showLeadForm()">Novo formulário</button></div></div>`;
  }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent=config.send;$('backQuestion').disabled=false;}}
 }
-function scoreLead(l,weights=config.score){
- let total = l.urgency==='Compra planejada'?weights.planned:l.urgency==='Urgente'?weights.urgent:0;
- if(l.knows==='Sim') total+=weights.knows;
- if(l.intent==='Quero contratar') total+=weights.wants;
- if(l.hasEntry==='Sim' && l.value>0 && l.entry/l.value>=weights.percent/100) total+=weights.entry;
- return total;
-}
+
 function renderLeads(){
  const formId=$('filterForm').value;
- const all=getLeads().filter(lead=>!formId || lead.formId===formId);$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.hot).length;
+ const all=getLeads().filter(lead=>!formId || lead.formId===formId);$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.status==='new').length;
  const q=($('search')?.value||'').toLowerCase(),filter=$('filter')?.value||'all';
  let rows=all.filter(l=>(l.name+' '+l.ddd+l.phone).toLowerCase().includes(q));
- if(filter==='hot')rows=rows.filter(l=>l.hot);else if(filter!=='all')rows=rows.filter(l=>l.status===filter);
- rows.sort((a,b)=>{const urg=(x)=>x.urgency==='Compra planejada'?0:1;return urg(a)-urg(b)||b.score-a.score||new Date(b.created)-new Date(a.created);});
+ if(filter!=='all')rows=rows.filter(l=>l.status===filter);
+ rows.sort(compareLeads);
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -894,20 +901,21 @@ function showDetails(id){
  const l=getLeads().find(x=>x.id===id);if(!l)return;
  const phone='55'+l.ddd+l.phone.replace(/\D/g,'');const msg=makeMessage(l);const wa='https://wa.me/'+phone+'?text='+encodeURIComponent(msg);
  $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><h2>${esc(l.name)}</h2><span class="muted">Lead recebido em ${new Date(l.created).toLocaleString('pt-BR')}</span></div><button class="close" onclick="closeModal()">✕</button></div>
- <p>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'} &nbsp; ${statusTag(l.status)}</p>
+ <p>${statusTag(l.status)}</p>
  <div class="detail-grid">
- ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${detail('Pontuação de interesse',l.score+' pontos')}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
+ ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
- <h3 style="font-size:15px;margin:20px 0 8px">Mensagem personalizada para WhatsApp</h3><div class="message">${esc(msg)}</div>
+ <h3 style="font-size:15px;margin:20px 0 8px">Mensagem para WhatsApp</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">${esc(msg)}</div>
  <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
  </div></div>`;
+ populateLeadMessages(l);
 }
 function detail(k,v){return `<div class="detail"><small>${k}</small><b>${esc(v)}</b></div>`;}
 function closeModal(){$('modalRoot').innerHTML='';}
 async function openWhatsApp(id){
  const lead=getLeads().find(item=>item.id===id);
  if(!lead?.phone) return;
- const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(makeMessage(lead));
+ const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(selectedMessage(lead));
  const tab = window.open('about:blank','_blank');
  if(!tab){alert('Permita a abertura de novas janelas para acessar o WhatsApp.');return;}
  tab.opener = null;
@@ -922,7 +930,7 @@ async function openWhatsApp(id){
   alert('O WhatsApp abriu, mas não foi possível atualizar o status: '+error.message);
  }
 }
-function copyMessage(id){const l=getLeads().find(x=>x.id===id);if(l)navigator.clipboard?.writeText(makeMessage(l)).then(()=>alert('Mensagem copiada.')).catch(()=>alert(makeMessage(l)));}
+function copyMessage(id){const l=getLeads().find(x=>x.id===id);if(l)navigator.clipboard?.writeText(selectedMessage(l)).then(()=>alert('Mensagem copiada.')).catch(()=>alert(selectedMessage(l)));}
 async function setStatus(id,status){
  try{
  const dbStatus=status==='closed'?'Fechado':status==='responded'?'Em atendimento':'Novo';
@@ -930,6 +938,28 @@ async function setStatus(id,status){
  closeModal();await loadLeads();
  }catch(e){alert('Não foi possível atualizar o status: '+e.message);}
 }
+
+const replyStorage='crm_quick_replies_v2';
+const sortStorage='crm_sort_rules_v2';
+let quickReplies=JSON.parse(localStorage.getItem(replyStorage)||'[]');
+let sortRules=JSON.parse(localStorage.getItem(sortStorage)||'[{"field":"urgency","direction":"asc"},{"field":"asset","direction":"asc"},{"field":"created","direction":"desc"}]');
+const sortFields={urgency:'Urgência',asset:'Bem desejado',intent:'Interesse',name:'Nome do lead',status:'Status',value:'Valor do bem',entry:'Valor da entrada',created:'Data de cadastro'};
+function compareLeads(a,b){for(const rule of sortRules){let av=a[rule.field],bv=b[rule.field];if(rule.field==='created'){av=new Date(av).getTime();bv=new Date(bv).getTime();}if(['value','entry','created'].includes(rule.field)){av=Number(av)||0;bv=Number(bv)||0;}else{av=String(av||'').toLocaleLowerCase('pt-BR');bv=String(bv||'').toLocaleLowerCase('pt-BR');}const diff=typeof av==='number'?av-bv:av.localeCompare(bv,'pt-BR',{numeric:true});if(diff)return rule.direction==='desc'?-diff:diff;}return new Date(b.created)-new Date(a.created);}
+function persistSort(){localStorage.setItem(sortStorage,JSON.stringify(sortRules));renderSortRules();renderLeads();}
+function resetSort(){sortRules=[{field:'urgency',direction:'asc'},{field:'asset',direction:'asc'},{field:'created',direction:'desc'}];persistSort();}
+function moveSort(i,delta){const j=i+delta;if(j<0||j>=sortRules.length)return;[sortRules[i],sortRules[j]]=[sortRules[j],sortRules[i]];persistSort();}
+function renderSortRules(){const el=$('sortRules');if(!el)return;el.innerHTML=sortRules.map((r,i)=>`<div class="sort-row"><span class="sort-number">${i+1}</span><select aria-label="Critério ${i+1}" onchange="sortRules[${i}].field=this.value;persistSort()">${Object.entries(sortFields).map(([key,label])=>`<option value="${key}" ${r.field===key?'selected':''}>${label}</option>`).join('')}</select><select aria-label="Direção ${i+1}" onchange="sortRules[${i}].direction=this.value;persistSort()"><option value="asc" ${r.direction==='asc'?'selected':''}>Crescente ↑</option><option value="desc" ${r.direction==='desc'?'selected':''}>Decrescente ↓</option></select><button class="secondary small" onclick="moveSort(${i},-1)" title="Subir">↑</button><button class="secondary small" onclick="moveSort(${i},1)" title="Descer">↓</button><button class="danger small" onclick="sortRules.splice(${i},1);persistSort()" title="Remover">×</button></div>`).join('')+`<button class="secondary small" onclick="sortRules.push({field:'created',direction:'desc'});persistSort()">+ Adicionar critério</button>`;}
+function switchManagementTab(tab){$('publishedForms').classList.toggle('hidden',tab!=='forms');$('quickRepliesPanel').classList.toggle('hidden',tab!=='messages');$('tabForms').classList.toggle('active',tab==='forms');$('tabMessages').classList.toggle('active',tab==='messages');$('createFormButton').classList.toggle('hidden',tab!=='forms');if(tab==='messages')renderQuickReplies();}
+function renderQuickReplies(){$('quickRepliesList').innerHTML=quickReplies.map((r,i)=>`<div class="reply-item"><strong>${esc(r.title)}</strong><p class="muted">${esc(r.body).slice(0,180)}</p><div class="actions"><button class="secondary small" onclick="editQuickReply(${i})">Editar</button><button class="danger small" onclick="deleteQuickReply(${i})">Excluir</button></div></div>`).join('')||'<p class="muted">Nenhuma resposta rápida cadastrada.</p>';}
+function editQuickReply(i=-1){const r=quickReplies[i]||{title:'',body:''};$('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><h2>${i<0?'Nova':'Editar'} resposta rápida</h2><div class="field"><label>Nome do template</label><input id="replyTitle" maxlength="90" value="${esc(r.title)}" placeholder="Ex.: Primeiro contato"></div><div class="field"><label>Mensagem</label><textarea id="replyBody" rows="8" placeholder="Olá, {nome}!">${esc(r.body)}</textarea></div><p class="hint">Variáveis: {nome}, {bem}, {valor}, {urgencia}, {interesse}</p><div class="actions"><button class="primary" onclick="saveQuickReply(${i})">Salvar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div></div></div>`;}
+function saveQuickReply(i){const title=$('replyTitle').value.trim(),body=$('replyBody').value.trim();if(!title||!body){alert('Preencha o nome e a mensagem.');return;}if(i<0)quickReplies.push({title,body});else quickReplies[i]={title,body};localStorage.setItem(replyStorage,JSON.stringify(quickReplies));closeModal();renderQuickReplies();}
+function deleteQuickReply(i){if(!confirm('Excluir esta resposta rápida?'))return;quickReplies.splice(i,1);localStorage.setItem(replyStorage,JSON.stringify(quickReplies));renderQuickReplies();}
+function formatReply(body,l){return body.replace(/\{(nome|bem|valor|urgencia|interesse)\}/gi,(_,key)=>({nome:l.name.split(' ')[0],bem:l.asset||'',valor:money(l.value),urgencia:l.urgency||'',interesse:l.intent||''})[key.toLowerCase()]);}
+function populateLeadMessages(l){const sel=$('leadMessageTemplate');if(!sel)return;sel.innerHTML='<option value="default">Mensagem sugerida</option>'+quickReplies.map((r,i)=>`<option value="${i}">${esc(r.title)}</option>`).join('');}
+function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.value;if(index!==undefined&&index!=='default'&&quickReplies[Number(index)])return formatReply(quickReplies[Number(index)].body,l);return makeMessage(l);}
+function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l);}
+renderSortRules();
+
 setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
 </script>
 </body>
