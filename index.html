@@ -55,7 +55,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 
 <section id="appView">
- <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="editFormButton" type="button">Formulários</button><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
  <main class="wrap">
   <div id="dashboard">
    <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" onclick="showLeadForm()">＋ Abrir formulário</button></div></div>
@@ -74,12 +74,22 @@ body:has(.topbar[style*="none"]) {background:#101810}
  </main>
 </section>
 <div id="modalRoot"></div>
+<dialog id="formEditor" class="form-card" aria-labelledby="formEditorTitle" style="max-height:85vh;overflow:auto">
+ <h2 id="formEditorTitle">Criar e editar formulário</h2>
+ <p>Publique as alterações no formulário deste link.</p>
+ <form id="formSettings">
+  <button type="button" class="secondary" id="newForm">Criar novo rascunho</button>
+  <div id="formEditorFields"></div>
+  <p id="editorMessage" role="status"></p>
+  <div class="actions"><button type="button" class="secondary" id="closeEditor">Fechar</button><button type="submit" class="primary">Salvar e publicar</button></div>
+ </form>
+</dialog>
 <dialog id="accessSettings" class="form-card" aria-labelledby="accessTitle">
  <h2 id="accessTitle">Alterar acesso</h2>
  <form id="accessForm">
   <div class="field"><label for="newUser">Novo usuário</label><input id="newUser" autocomplete="username" required></div>
   <div class="field"><label for="currentPassword">Senha atual</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
-  <div class="field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required></div>
+  <div class="field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" autocomplete="new-password" required></div>
   <p class="error" id="accessError" role="alert"></p>
   <div class="actions"><button type="button" class="secondary" id="cancelAccess">Cancelar</button><button type="submit" class="primary">Salvar</button></div>
  </form>
@@ -104,7 +114,7 @@ async function adminRequest(action, data = {}){
  const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/crm_admin_v1', {
   method: 'POST',
   headers: {apikey: SUPABASE_PUBLISHABLE_KEY, 'Content-Type':'application/json'},
-  body: JSON.stringify({action, token:sessionStorage.getItem(sessionKey), data})
+  body: JSON.stringify({action, token:action==='form_read'?null:sessionStorage.getItem(sessionKey), data})
  });
  if(!response.ok) throw new Error('Falha ao conectar ao painel. Confira se o SQL foi executado no Supabase.');
  const result = await response.json();
@@ -112,13 +122,157 @@ async function adminRequest(action, data = {}){
  if(result.message && action !== 'session') throw new Error(result.message);
  return result;
 }
+const baseQuestions = {
+ name:'Nome completo *', ddd:'Telefone com DDD *', asset:'Qual bem deseja? *',
+ other:'Qual outro bem ou serviço? *', value:'Qual o valor do bem? (R$) *',
+ hasEntry:'Tem entrada? *', entry:'Qual o valor da entrada? (R$) *',
+ urgency:'Qual a urgência para adquirir o bem? *',
+ knows:'Conhece como funciona o consórcio? *', intent:'Qual seu interesse em contratar? *'
+};
+const defaultConfig = {
+ title:'Encontre o plano ideal para você.',
+ subtitle:'Conte o que você quer conquistar. Nossa equipe entra em contato para conversar sobre as opções de consórcio.',
+ cover:'', next:'Próxima', back:'Voltar', send:'Enviar formulário',
+ questions:baseQuestions, extra:[],
+ rules:{other:'Outro', entry:'Sim'},
+ score:{planned:2, urgent:1, knows:2, wants:3, entry:2, percent:50, hot:6}
+};
+const scoreLabels = {
+ planned:'Pontos para compra planejada', urgent:'Pontos para compra urgente',
+ knows:'Pontos se conhece consórcio', wants:'Pontos se quer contratar',
+ entry:'Pontos pela entrada', percent:'Percentual mínimo de entrada para pontuar',
+ hot:'Pontuação mínima para lead propenso'
+};
+let config = structuredClone(defaultConfig);
+let configAvailable = false;
+
+async function loadFormConfig(){
+ try{
+  const saved = await adminRequest('form_read');
+  config = {...defaultConfig, ...saved,
+   questions:{...baseQuestions,...saved.questions},
+   rules:{...defaultConfig.rules,...saved.rules},
+   score:{...defaultConfig.score,...saved.score}};
+  configAvailable = true;
+ }catch{
+  configAvailable = false;
+ }
+}
+
+const conditionOptions = {
+ asset:['Carro','Moto','Caminhão','Procedimento estético','Serviços','Outro'],
+ hasEntry:['Sim','Não'], urgency:['Urgente','Compra planejada'],
+ knows:['Sim','Não'], intent:['Quero contratar','Estou pesquisando']
+};
+const editField = (label, name, value, attributes='', id=name) =>
+ '<div class="field"><label for="edit-'+id+'">'+esc(label)+'</label><input id="edit-'+id+'" name="'+name+'" value="'+esc(value)+'" '+attributes+'></div>';
+const options = (values, selected) => values.map(value =>
+ '<option value="'+esc(value)+'"'+(value===selected?' selected':'')+'>'+esc(value)+'</option>').join('');
+
+let extraEditorId = 0;
+function addQuestionEditor(question = {}){
+ const id = ++extraEditorId;
+ const block = document.createElement('fieldset');
+ block.style.margin = '12px 0';
+ block.innerHTML = '<legend>Pergunta adicional</legend>'+
+ editField('Pergunta','extra-title',question.title ?? '', 'required maxlength="200"','extra-title-'+id)+
+ '<label>Tipo <select name="extra-type">'+options(['Texto','Número','Opções'],question.type)+'</select></label>'+
+ editField('Opções separadas por vírgula','extra-options',(question.options ?? []).join(', '), 'maxlength="500"','extra-options-'+id)+
+ '<label>Mostrar se <select name="extra-field"><option value="">Sempre</option>'+
+ Object.keys(conditionOptions).map(key => '<option value="'+key+'"'+(key===question.field?' selected':'')+'>'+esc(config.questions[key])+'</option>').join('')+
+ '</select></label> <label>Resposta <select name="extra-match"></select></label>'+
+ '<p><label><input type="checkbox" name="extra-required"'+(question.required?' checked':'')+'> Obrigatória</label></p>'+
+ '<button class="secondary" type="button">Excluir pergunta</button>';
+ const field = block.querySelector('[name="extra-field"]');
+ const match = block.querySelector('[name="extra-match"]');
+ const update = selected => {
+  match.innerHTML = options(conditionOptions[field.value] ?? [], selected);
+  match.disabled = !field.value;
+ };
+ field.addEventListener('change',()=>update());
+ update(question.match);
+ block.querySelector('button').addEventListener('click',()=>block.remove());
+ $('extraEditors').append(block);
+}
+
+function renderFormEditor(draft){
+ const editor = $('formEditorFields');
+ editor.innerHTML = '<h3>Capa e botões</h3>'+
+ editField('Título','title',draft.title,'required maxlength="150"')+
+ editField('Descrição','subtitle',draft.subtitle,'maxlength="500"')+
+ editField('Imagem de fundo da capa (URL HTTPS)','cover',draft.cover,'type="url" maxlength="2000" pattern="https://.+"')+
+ editField('Botão Próxima','next',draft.next,'required maxlength="50"')+
+ editField('Botão Voltar','back',draft.back,'required maxlength="50"')+
+ editField('Botão Enviar','send',draft.send,'required maxlength="50"')+
+ '<h3>Perguntas do formulário</h3>'+
+ Object.keys(baseQuestions).map(key => editField(baseQuestions[key],'q-'+key,draft.questions[key],'required maxlength="200"')).join('')+
+ '<h3>Condições das perguntas</h3>'+
+ '<label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label><br>'+
+ '<label>Mostrar valor da entrada <select name="rule-entry">'+options(['Sim','Sempre'],draft.rules.entry)+'</select></label>'+
+ '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
+ '<h3>Pontuação</h3>'+
+ Object.keys(scoreLabels).map(key => editField(scoreLabels[key],'score-'+key,draft.score[key],
+ 'required type="number" min="0" max="'+(key==='percent'?100:1000)+'"')).join('');
+ draft.extra.forEach(addQuestionEditor);
+ $('addExtra').onclick = ()=>addQuestionEditor();
+}
+
+$('editFormButton').onclick = async () => {
+ if(temporaryAccess) return;
+ await loadFormConfig();
+ if(!configAvailable){alert('Execute atualizar-formulario.sql no Supabase para publicar alterações.');return;}
+ $('editorMessage').textContent = '';
+ renderFormEditor(config);
+ $('formEditor').showModal();
+};
+$('closeEditor').onclick = ()=>$('formEditor').close();
+$('newForm').onclick = ()=>{
+ if(confirm('Iniciar um novo rascunho? O formulário publicado só muda quando você salvar.')){
+  renderFormEditor(structuredClone(defaultConfig));
+ }
+};
+$('formSettings').onsubmit = async event => {
+ event.preventDefault();
+ const form = event.currentTarget;
+ const button = form.querySelector('[type="submit"]');
+ const fields = new FormData(form);
+ const extra = Array.from($('extraEditors').children, block=>{
+  const get = name => block.querySelector('[name="extra-'+name+'"]');
+  return {title:get('title').value.trim(), type:get('type').value,
+   options:get('options').value.split(',').map(value=>value.trim()).filter(Boolean),
+   field:get('field').value, match:get('match').value, required:get('required').checked};
+ });
+ if(extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
+  $('editorMessage').textContent = 'Preencha o título e as opções das perguntas adicionais.';
+  return;
+ }
+ const draft = Object.fromEntries(['title','subtitle','cover','next','back','send'].map(key=>[key,fields.get(key).trim()]));
+ draft.questions = Object.fromEntries(Object.keys(baseQuestions).map(key=>[key,fields.get('q-'+key).trim()]));
+ draft.rules = {other:fields.get('rule-other'),entry:fields.get('rule-entry')};
+ draft.score = Object.fromEntries(Object.keys(scoreLabels).map(key=>[key,Number(fields.get('score-'+key))]));
+ draft.extra = extra;
+ button.disabled = true;
+ try{
+  const result = await adminRequest('form_save',draft);
+  if(!result.updated) throw new Error('A publicação não foi confirmada.');
+  config = draft;
+  $('editorMessage').textContent = 'Formulário publicado.';
+  await loadLeads();
+ }catch(error){
+  $('editorMessage').textContent = error.message;
+ }finally{
+  button.disabled = false;
+ }
+};
+
 async function loadLeads(){
  if(!signedIn || temporaryAccess)return;
  try{
  const rows=await adminRequest('leads');
  leadsCache=rows.map(r=>{
  const l={id:String(r.id),created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
- l.score=scoreLead(l);l.hot=l.score>=6;return l;
+ l.answers=Array.isArray(r.form_answers)?r.form_answers.filter(item=>typeof item?.question==='string' && typeof item.answer==='string'):[];
+ l.score=scoreLead(l);l.hot=l.score>=config.score.hot;return l;
  });renderLeads();
  }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
 }
@@ -155,7 +309,7 @@ accessForm.addEventListener('submit', async event => {
   button.disabled = false;
  }
 });
-function enterDashboard(session){
+async function enterDashboard(session){
  temporaryAccess = session.temporary === true;
  signedIn=true;$('loginView').style.display='none';$('appView').style.display='block';
  $('password').value='';
@@ -166,6 +320,7 @@ function enterDashboard(session){
   accessSettings.showModal();
   return;
  }
+ await loadFormConfig();
  showDashboard();
 }
 $('loginForm').addEventListener('submit',async e=>{
@@ -174,7 +329,7 @@ $('loginForm').addEventListener('submit',async e=>{
  try{
  const session = await adminRequest('login', {username:$('username').value.trim(), password:$('password').value});
  sessionStorage.setItem(sessionKey, session.token);
- enterDashboard(session);
+ await enterDashboard(session);
  }catch(err){$('loginError').textContent=err.message;}finally{button.disabled=false;}
 });
 async function logout(){
@@ -185,10 +340,10 @@ async function logout(){
 }
 function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
 if(!new URLSearchParams(location.search).has('admin') || new URLSearchParams(location.search).has('form')){
- $('loginView').style.display='none';$('appView').style.display='block';document.querySelector('.topbar').style.display='none';showLeadForm();
+ $('loginView').style.display='none';$('appView').style.display='block';document.querySelector('.topbar').style.display='none';loadFormConfig().then(showLeadForm);
 }else{adminRequest('session').then(session=>{if(session.active)enterDashboard(session);}).catch(error=>{$('loginError').textContent=error.message;});}
 function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden');$('formPage').classList.remove('hidden');$('formPage').innerHTML=`
- <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>Encontre o plano<br><em>ideal para você.</em></h1><p>Conte o que você quer conquistar. Nossa equipe entra em contato para conversar sobre as opções de consórcio.</p></header><div class="form-card">
+ <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>${esc(config.title)}</h1><p>${esc(config.subtitle)}</p></header><div class="form-card">
  <form id="leadForm">
   <div class="section"><div class="field"><label>Nome completo *</label><input name="name" required placeholder="Digite seu nome"></div>
   <div class="field"><label>Telefone com DDD *</label><div class="two"><input name="ddd" inputmode="numeric" maxlength="2" pattern="[0-9]{2}" placeholder="DDD" required aria-label="DDD"><input name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{8,9}" placeholder="Número de telefone" required aria-label="Número de telefone"></div><div class="hint">Informe o DDD separado do número.</div></div></div>
@@ -197,7 +352,7 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   </div></div><div class="field hidden" id="otherWrap"><label>Qual outro bem ou serviço? *</label><input name="other" id="otherInput" placeholder="Descreva"></div>
   <div class="field"><label>Qual o valor do bem? (R$) *</label><input name="value" id="assetValue" inputmode="decimal" placeholder="Ex.: 80.000" required></div></div>
   <div class="section"><div class="field"><label>Tem entrada? *</label><div class="choices"><label class="choice"><input type="radio" name="hasEntry" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="hasEntry" value="Não" required> Não</label></div></div>
-  <div class="field hidden" id="entryWrap"><label>Qual o valor da entrada? (R$) *</label><input name="entry" id="entryValue" inputmode="decimal" placeholder="Ex.: 20.000"></div></div>
+  <div class="field hidden" id="entryWrap"><label>Qual o valor da entrada? (R$) *</label><input name="entry" id="entryValue" inputmode="decimal" placeholder="Ex.: 20.000"><button type="button" class="secondary" id="noEntry" style="margin-top:8px">Não tenho entrada</button></div></div>
   <div class="section"><div class="field"><label>Qual a urgência para adquirir o bem? *</label><div class="choices"><label class="choice"><input type="radio" name="urgency" value="Urgente" required> Urgente</label><label class="choice"><input type="radio" name="urgency" value="Compra planejada" required> Compra planejada / futura</label></div></div></div>
   <div class="section"><div class="field"><label>Conhece como funciona o consórcio? *</label><div class="choices"><label class="choice"><input type="radio" name="knows" value="Sim" required> Sim</label><label class="choice"><input type="radio" name="knows" value="Não" required> Não</label></div></div>
   <div class="field"><label>Qual seu interesse em contratar? *</label><div class="choices"><label class="choice"><input type="radio" name="intent" value="Quero contratar" required> Quero contratar</label><label class="choice"><input type="radio" name="intent" value="Estou pesquisando" required> Estou pesquisando</label></div></div></div>
@@ -206,7 +361,38 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
    <button type="submit" class="primary" id="nextQuestion">Próxima</button>
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
- setupQuestions($('leadForm'));
+ const form = $('leadForm');
+ const cover = document.querySelector('.form-hero');
+ if(config.cover){
+  const link = document.createElement('a');
+  link.href = config.cover;
+  if(link.protocol === 'https:'){
+   cover.style.backgroundImage = 'linear-gradient(#101810b3,#101810e6),url("'+encodeURI(link.href).replaceAll('"','%22')+'")';
+   cover.style.backgroundSize = 'cover';
+   cover.style.backgroundPosition = 'center';
+  }
+ }
+ form.querySelectorAll('.field').forEach(field => {
+  field.querySelector('label').textContent = config.questions[field.querySelector('input').name];
+ });
+ const controls = $('backQuestion').parentElement;
+ config.extra.forEach((question,index)=>{
+  const field = document.createElement('div');
+  field.className = 'field';
+  field.dataset.extra = index;
+  const name = 'extra-'+index;
+  field.innerHTML = '<label for="'+name+'">'+esc(question.title)+'</label>';
+  const input = document.createElement(question.type==='Opções'?'select':'input');
+  input.id = input.name = name;
+  input.required = question.required;
+  if(question.type==='Opções') input.innerHTML = '<option value="">Selecione</option>'+options(question.options);
+  else input.type = question.type==='Número'?'number':'text';
+  if(input.type==='number') input.step='any';
+  if(input.type==='text') input.maxLength=500;
+  field.append(input);
+  form.insertBefore(field,controls);
+ });
+ setupQuestions(form);
 }
 function setupQuestions(form){
  const questions = Array.from(form.querySelectorAll('.field'));
@@ -219,10 +405,25 @@ function setupQuestions(form){
  for (const question of questions) form.insertBefore(question, controls);
  form.querySelectorAll('.section').forEach(section => section.remove());
 
- const applicable = () => questions.filter(question =>
-  (question.id !== 'otherWrap' || form.asset.value === 'Outro') &&
-  (question.id !== 'entryWrap' || form.hasEntry.value === 'Sim')
- );
+ const applicable = () => questions.filter(question => {
+  if(question.id === 'otherWrap') return config.rules.other === 'Sempre' || form.asset.value === 'Outro';
+  if(question.id === 'entryWrap') return config.rules.entry === 'Sempre' || form.hasEntry.value === 'Sim';
+  if(question.dataset.extra === undefined) return true;
+  const rule = config.extra[question.dataset.extra];
+  const answer = rule.field === 'hasEntry' && $('entryValue').dataset.none ? 'Não' : form.elements[rule.field]?.value;
+  return !rule.field || answer === rule.match;
+ });
+ $('backQuestion').textContent = config.back;
+ $('noEntry').onclick = () => {
+  $('entryValue').dataset.none = 'true';
+  $('entryValue').value = '';
+  form.requestSubmit();
+ };
+ $('entryValue').oninput = () => delete $('entryValue').dataset.none;
+ form.querySelectorAll('[name="hasEntry"]').forEach(input => input.addEventListener('change',()=>{
+  delete $('entryValue').dataset.none;
+  $('entryValue').value = '';
+ }));
  let current = questions[0];
 
  function renderQuestion(focus){
@@ -231,7 +432,7 @@ function setupQuestions(form){
   questions.forEach(question => question.classList.toggle('hidden', question !== current));
   progress.textContent = 'Pergunta ' + (index + 1) + ' de ' + steps.length;
   $('backQuestion').classList.toggle('hidden', index === 0);
-  $('nextQuestion').textContent = index === steps.length - 1 ? 'Enviar formulário' : 'Próxima';
+  $('nextQuestion').textContent = index === steps.length - 1 ? config.send : config.next;
   if(focus){
    current.tabIndex = -1;
    current.focus();
@@ -248,8 +449,9 @@ function setupQuestions(form){
  form.addEventListener('submit', event => {
   event.preventDefault();
   if($('nextQuestion').disabled) return;
-  for(const input of current.querySelectorAll('input')){
-   if(input.type !== 'radio' && !input.value.trim()){
+  for(const input of current.querySelectorAll('input,select')){
+   if(input.id === 'entryValue' && input.dataset.none) continue;
+   if(input.type !== 'radio' && !input.value.trim() && (input.required || current.dataset.extra === undefined)){
     input.setCustomValidity('Preencha este campo para continuar.');
    }else if(input.inputMode === 'decimal' && moneyNumber(input.value) <= 0){
     input.setCustomValidity('Informe um valor maior que zero.');
@@ -261,7 +463,10 @@ function setupQuestions(form){
   const steps = applicable();
   const next = steps[steps.indexOf(current) + 1];
   if(!next){
-   submitLead(event);
+   const answers = steps.filter(step=>step.dataset.extra !== undefined).map(step=>({
+    question:config.extra[step.dataset.extra].title, answer:step.querySelector('input,select').value
+   })).filter(item=>item.answer !== '');
+   submitLead(event, answers);
    return;
   }
   current = next;
@@ -272,24 +477,33 @@ function setupQuestions(form){
 }
 function moneyNumber(v){return Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0;}
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});}
-async function submitLead(e){
+async function submitLead(e, answers){
  e.preventDefault();const f=e.target,fd=new FormData(f);
- const amount=moneyNumber(fd.get('value')),entry=fd.get('hasEntry')==='Sim'?moneyNumber(fd.get('entry')):0;
+ const amount=moneyNumber(fd.get('value'));
+ const entry=moneyNumber(fd.get('entry'));
+ const hasEntry=($('entryValue').dataset.none || entry<=0)?'Não':'Sim';
  if(amount<=0){alert('Informe um valor válido para o bem.');return;}
- if(fd.get('hasEntry')==='Sim'&&entry<=0){alert('Informe um valor de entrada válido.');return;}
- const lead={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),created:new Date().toISOString(),name:fd.get('name').trim(),ddd:fd.get('ddd'),phone:fd.get('phone'),asset:fd.get('asset')==='Outro'?fd.get('other').trim():fd.get('asset'),value:amount,hasEntry:fd.get('hasEntry'),entry,urgency:fd.get('urgency'),knows:fd.get('knows'),intent:fd.get('intent'),status:'new'};
- lead.score=scoreLead(lead);lead.hot=lead.score>=6;
+ const lead={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),created:new Date().toISOString(),name:fd.get('name').trim(),ddd:fd.get('ddd'),phone:fd.get('phone'),asset:fd.get('asset')==='Outro'?fd.get('other').trim():fd.get('asset'),value:amount,hasEntry,entry:hasEntry==='Sim'?entry:0,urgency:fd.get('urgency'),knows:fd.get('knows'),intent:fd.get('intent'),status:'new'};
+ lead.score=scoreLead(lead);lead.hot=lead.score>=config.score.hot;
  const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
   const row={name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'};
+  if(answers.length) row.form_answers=answers;
   const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
   if(!response.ok){const detail=await response.text();throw new Error(supabaseError(response.status,detail));}
   if(signedIn)await loadLeads();
   $('formPage').innerHTML=`<div class="form-page"><div class="form-card" style="text-align:center;padding:40px 25px"><div style="font-size:42px;color:var(--green)">✓</div><h1>Formulário enviado!</h1><p class="muted">Obrigado pelo interesse. Nossa equipe poderá entrar em contato em breve.</p><button class="secondary" onclick="showLeadForm()">Novo formulário</button></div></div>`;
- }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent='Enviar formulário';$('backQuestion').disabled=false;}}
+ }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent=config.send;$('backQuestion').disabled=false;}}
 }
-function scoreLead(l){let s=0;if(l.urgency==='Compra planejada')s+=2;if(l.urgency==='Urgente')s+=1;if(l.knows==='Sim')s+=2;if(l.intent==='Quero contratar')s+=3;if(l.hasEntry==='Sim'&&l.value>0&&l.entry/l.value>=.5)s+=2;return s;}
+function scoreLead(l){
+ const weights = config.score;
+ let total = l.urgency==='Compra planejada'?weights.planned:l.urgency==='Urgente'?weights.urgent:0;
+ if(l.knows==='Sim') total+=weights.knows;
+ if(l.intent==='Quero contratar') total+=weights.wants;
+ if(l.hasEntry==='Sim' && l.value>0 && l.entry/l.value>=weights.percent/100) total+=weights.entry;
+ return total;
+}
 function renderLeads(){
  const all=getLeads();$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.hot).length;
  const q=($('search')?.value||'').toLowerCase(),filter=$('filter')?.value||'all';
@@ -320,7 +534,7 @@ function showDetails(id){
  $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><h2>${esc(l.name)}</h2><span class="muted">Lead recebido em ${new Date(l.created).toLocaleString('pt-BR')}</span></div><button class="close" onclick="closeModal()">✕</button></div>
  <p>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'} &nbsp; ${statusTag(l.status)}</p>
  <div class="detail-grid">
- ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${detail('Pontuação de interesse',l.score+' pontos')}
+ ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${detail('Pontuação de interesse',l.score+' pontos')}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
  <h3 style="font-size:15px;margin:20px 0 8px">Mensagem personalizada para WhatsApp</h3><div class="message">${esc(msg)}</div>
  <div class="actions" style="margin-top:16px"><button class="primary" onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
@@ -328,7 +542,24 @@ function showDetails(id){
 }
 function detail(k,v){return `<div class="detail"><small>${k}</small><b>${esc(v)}</b></div>`;}
 function closeModal(){$('modalRoot').innerHTML='';}
-function openWhatsApp(id){const l=getLeads().find(x=>x.id===id);if(!l)return;const url='https://wa.me/55'+l.ddd+l.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(makeMessage(l));window.open(url,'_blank');if(l.status==='new')setStatus(id,'responded');}
+async function openWhatsApp(id){
+ const lead=getLeads().find(item=>item.id===id);
+ if(!lead) return;
+ const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(makeMessage(lead));
+ const tab = window.open('about:blank','_blank');
+ if(!tab){alert('Permita a abertura de novas janelas para acessar o WhatsApp.');return;}
+ tab.opener = null;
+ tab.location.replace(url);
+ if(lead.status!=='new') return;
+ try{
+  if(configAvailable) await adminRequest('whatsapp_open',{id});
+  else await adminRequest('status',{id,status:'Em atendimento'});
+  closeModal();
+  await loadLeads();
+ }catch(error){
+  alert('O WhatsApp abriu, mas não foi possível atualizar o status: '+error.message);
+ }
+}
 function copyMessage(id){const l=getLeads().find(x=>x.id===id);if(l)navigator.clipboard?.writeText(makeMessage(l)).then(()=>alert('Mensagem copiada.')).catch(()=>alert(makeMessage(l)));}
 async function setStatus(id,status){
  try{
