@@ -150,6 +150,8 @@ let config = structuredClone(defaultConfig);
 let configAvailable = false;
 let forms = {principal:{}};
 let editingFormId = null;
+let editorBanner = "";
+let editorLegacy = false;
 const crmFields = {
  name:'Nome', phone:'WhatsApp com DDD', asset:'Bem desejado', value:'Valor do bem',
  entry:'Valor da entrada', urgency:'Urgência (Urgente ou Compra planejada)',
@@ -227,7 +229,12 @@ function refreshRoutes(){
   const selected = field.value || block.pendingField || '';
   delete block.pendingField;
   field.replaceChildren(new Option('Sempre',''));
-  if(index>0) field.add(new Option('Entrada em % do valor do bem','entryPercent'));
+  if(index>0 || editorLegacy) field.add(new Option('Entrada em % do valor do bem','entryPercent'));
+  if(editorLegacy){
+   for(const key of ['asset','hasEntry','urgency','knows','intent']){
+    field.add(new Option(baseQuestions[key],key));
+   }
+  }
   for(const prev of blocks.slice(0,index)){
    field.add(new Option(prev.querySelector('[name="extra-title"]').value || 'Pergunta sem título',prev.dataset.key));
   }
@@ -271,7 +278,7 @@ function addQuestionEditor(question = {}){
  block.routes = new Map((question.routes ?? []).map(route=>[route.answer,route.target]));
  block.innerHTML = '<legend>Pergunta</legend>'+
  editField('Pergunta','extra-title',question.title ?? '', 'required maxlength="200"','extra-title-'+id)+
- '<label>Tipo <select name="extra-type"><option value="Texto">Texto</option><option value="Opções"'+(question.type==='Opções'?' selected':'')+'>Botões</option></select></label>'+
+ '<label>Tipo <select name="extra-type"><option value="Texto">Texto</option><option value="Opções"'+(question.type==='Opções'?' selected':'')+'>Botões</option>'+(question.type==='Número'?'<option value="Número" selected>Número</option>':'')+'</select></label>'+
  '<div data-choices>'+editField('Textos dos botões separados por vírgula','extra-options',(question.options ?? []).join(', '),'maxlength="500"','extra-options-'+id)+'</div>'+
  '<p><label>Usar no CRM <select name="extra-role"><option value="">Somente resposta</option>'+
  Object.entries(crmFields).map(([key,label])=>'<option value="'+key+'"'+(key===question.role?' selected':'')+'>'+esc(label)+'</option>').join('')+
@@ -308,21 +315,101 @@ function addQuestionEditor(question = {}){
  $('extraEditors').append(block);
 }
 
+function isBanner(value){
+ return /^https:\/\//i.test(value) || /^data:image\/jpeg;base64,[a-z0-9+/=]+$/i.test(value);
+}
+
+async function prepareBanner(file){
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size>10*1024*1024){
+  throw new Error('Selecione um JPG, PNG ou WebP de até 10 MB.');
+ }
+ const url = URL.createObjectURL(file);
+ try{
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.min(1200/image.width,400/image.height);
+  const width = image.width*scale, height = image.height*scale;
+  ctx.fillStyle = $('edit-background').value;
+  ctx.fillRect(0,0,1200,400);
+  ctx.drawImage(image,(1200-width)/2,(400-height)/2,width,height);
+  for(const size of [1200,960,720,600]){
+   const output = document.createElement('canvas');
+   output.width=size;
+   output.height=size/3;
+   output.getContext('2d').drawImage(canvas,0,0,output.width,output.height);
+   for(const quality of [.86,.73,.60,.48,.35]){
+    const encoded=output.toDataURL('image/jpeg',quality);
+    if(encoded.length<=40000) return encoded;
+   }
+  }
+  throw new Error('A imagem ficou grande demais após a compressão.');
+ }finally{
+  URL.revokeObjectURL(url);
+ }
+}
+
+function updateBannerPreview(){
+ const image = $('bannerPreview');
+ image.hidden = !isBanner(editorBanner);
+ if(image.hidden) image.removeAttribute('src');
+ else image.src = editorBanner;
+}
+
 function renderFormEditor(draft){
+ editorBanner = draft.cover || '';
  const editor = $('formEditorFields');
  editor.innerHTML = '<h3>Capa e botões</h3>'+
  editField('Título','title',draft.title,'required maxlength="150"')+
- editField('Banner do topo (URL HTTPS da imagem)','cover',draft.cover,'type="url" maxlength="2000" pattern="https://.+"')+
- editField('Cor de fundo','background',draft.background || '#101810','type="color"')+
- editField('Botão Próxima','next',draft.next,'required maxlength="50"')+
- editField('Botão Voltar','back',draft.back,'required maxlength="50"')+
- editField('Botão Enviar','send',draft.send,'required maxlength="50"')+
+ '<div class="field"><label for="bannerUpload">Banner do topo</label>'+
+ '<input id="bannerUpload" type="file" accept="image/jpeg,image/png,image/webp">'+
+ '<p class="hint">Tamanho recomendado: 1200 × 400 px (3:1). JPG, PNG ou WebP de até 10 MB.</p>'+
+ '<img id="bannerPreview" alt="Prévia do banner" style="width:100%;max-width:480px;border-radius:12px">'+
+ '<p><button type="button" class="secondary" id="removeBanner">Remover imagem</button></p></div>'+
+ '<div class="field"><label for="edit-background">Cor de fundo</label><div class="actions">'+
+ '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
+ '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
+ '</div></div>'+
  '<h3>Perguntas do formulário</h3>'+
+ (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
+ '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
+ '<p><label>Mostrar valor da entrada <select name="rule-entry">'+options(['Sim','Sempre'],draft.rules.entry)+'</select></label></p>' : '')+
  '<p class="hint">Use os campos do CRM para aproveitar o WhatsApp, a pontuação e as condições por percentual.</p>'+
  '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
  '<h3>Pontuação</h3>'+
  Object.keys(scoreLabels).map(key => editField(scoreLabels[key],'score-'+key,draft.score[key],
  'required type="number" min="0" max="'+(key==='percent'?100:1000)+'"')).join('');
+ const picker=$('edit-background'), hex=$('backgroundHex');
+ picker.oninput=()=>{hex.value=picker.value.toUpperCase();};
+ hex.oninput=()=>{
+  if(/^#?[0-9a-f]{6}$/i.test(hex.value)) picker.value='#'+hex.value.replace('#','');
+ };
+ updateBannerPreview();
+ const uploader=$('bannerUpload'), remove=$('removeBanner');
+ const submit=$('formSettings').querySelector('[type="submit"]');
+ remove.onclick=()=>{editorBanner='';uploader.value='';updateBannerPreview();};
+ uploader.onchange=async ()=>{
+  const file=uploader.files[0];
+  if(!file) return;
+  uploader.disabled=remove.disabled=submit.disabled=true;
+  try{
+   const banner=await prepareBanner(file);
+   if(uploader.isConnected && $('formEditor').open){
+    editorBanner=banner;
+    updateBannerPreview();
+    $('editorMessage').textContent='Banner pronto para publicar.';
+   }
+  }catch(error){
+   if(uploader.isConnected) $('editorMessage').textContent=error.message;
+  }finally{
+   uploader.value='';
+   if(uploader.isConnected) uploader.disabled=remove.disabled=submit.disabled=false;
+  }
+ };
  draft.extra.forEach(addQuestionEditor);
  refreshRoutes();
  $('addExtra').onclick = ()=>{
@@ -372,11 +459,13 @@ async function showFormList(){
 
 function openFormEditor(id){
  editingFormId = id ?? crypto.randomUUID();
+ editorLegacy = !!id && !forms[id]?.custom;
+ $('formSettings').querySelector('[type="submit"]').disabled=false;
  $('formList').close();
  $('editorMessage').textContent = '';
  $('formEditorTitle').textContent = id ? 'Editar formulário' : 'Criar formulário';
  $('editorDescription').textContent = id
-  ? forms[id]?.custom ? 'Ao publicar, o formulário continua no mesmo link.' : 'Ao publicar, este link passa a mostrar apenas as perguntas deste editor. Revise as condições antigas que dependiam das perguntas padrão.'
+  ? 'Ao publicar, o formulário continua no mesmo link.'
   : 'Ao publicar, este formulário ganha um link próprio.';
  renderFormEditor(id ? normalizeForm(forms[id]) : structuredClone(defaultConfig));
  $('formEditor').showModal();
@@ -407,12 +496,17 @@ $('formSettings').onsubmit = async event => {
    field:get('field').value, match:get('match').value, required:get('required').checked,
    ...(get('field').value==='entryPercent' ? {operator:get('operator').value, percent:Number(get('percent').value)} : {})};
  });
- if(!extra.length || extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
+ if((!editorLegacy && !extra.length) || extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
   $('editorMessage').textContent = 'Adicione pelo menos uma pergunta e preencha os textos dos botões, quando houver.';
   return;
  }
- const draft = Object.fromEntries(['title','cover','background','next','back','send'].map(key=>[key,fields.get(key).trim()]));
- draft.custom = true;
+ const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),
+  cover:editorBanner,background:fields.get('background'),imageHeader:true,
+  custom:!editorLegacy,next:'Próxima',back:'Voltar',send:'Enviar formulário'};
+ if(editorLegacy){
+  draft.questions=Object.fromEntries(Object.keys(baseQuestions).map(key=>[key,fields.get('legacy-'+key).trim()]));
+  draft.rules={other:fields.get('rule-other'),entry:fields.get('rule-entry')};
+ }
  draft.score = Object.fromEntries(Object.keys(scoreLabels).map(key=>[key,Number(fields.get('score-'+key))]));
  draft.extra = extra;
  button.disabled = true;
@@ -544,14 +638,14 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
  const form = $('leadForm');
- if(config.custom){
-  form.querySelectorAll('.section').forEach(section=>section.remove());
+ if(config.custom) form.querySelectorAll('.section').forEach(section=>section.remove());
+ if(config.custom || config.imageHeader){
   const page = document.querySelector('.form-page');
   const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#101810';
   document.body.style.background = color;
   page.style.background = color;
   const header = document.querySelector('.form-hero');
-  if(/^https:\/\//i.test(config.cover)){
+  if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
    banner.alt='';
@@ -560,7 +654,7 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   }else header.remove();
  }
  const cover = document.querySelector('.form-hero');
- if(!config.custom && config.cover){
+ if(cover && config.cover){
   const link = document.createElement('a');
   link.href = config.cover;
   if(link.protocol === 'https:'){
