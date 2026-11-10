@@ -44,7 +44,6 @@ body:has(.topbar[style*="none"]) {background:#101810}
  <div class="login-card">
   <div class="brand">GESTÃO COMERCIAL</div><h1>Acesso administrativo</h1>
   <p class="muted">Entre para acompanhar os leads de consórcio.</p>
-  <p><a href="./">Voltar ao formulário</a></p>
   <form id="loginForm">
    <div class="field"><label for="username">Usuário</label><input id="username" type="text" autocomplete="username" required placeholder="Digite seu usuário"></div>
    <div class="field"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required placeholder="Digite sua senha"></div>
@@ -55,10 +54,10 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 
 <section id="appView">
- <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="editFormButton" type="button">Formulários</button><button class="secondary small" id="createFormButton" type="button">Criar formulário</button><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
  <main class="wrap">
   <div id="dashboard">
-   <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" onclick="showLeadForm()">＋ Abrir formulário</button></div></div>
+   <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" id="editFormButton" type="button">Formulários</button></div></div>
    <div class="stats">
     <div class="stat"><span>Formulários gerados</span><b id="countGenerated">0</b></div>
     <div class="stat"><span>Respondidos / em atendimento</span><b id="countResponded">0</b></div>
@@ -74,14 +73,18 @@ body:has(.topbar[style*="none"]) {background:#101810}
  </main>
 </section>
 <div id="modalRoot"></div>
+<dialog id="formList" class="form-card" aria-labelledby="formListTitle" style="max-height:85vh;overflow:auto">
+ <h2 id="formListTitle">Formulários</h2>
+ <div id="publishedForms"></div>
+ <div class="actions"><button class="secondary" id="closeFormList" type="button">Fechar</button><button class="primary" id="createFormButton" type="button">Criar formulário</button></div>
+</dialog>
 <dialog id="formEditor" class="form-card" aria-labelledby="formEditorTitle" style="max-height:85vh;overflow:auto">
  <h2 id="formEditorTitle">Criar e editar formulário</h2>
- <p>Publique as alterações no formulário deste link.</p>
+ <p id="editorDescription"></p>
  <form id="formSettings">
-  <button type="button" class="secondary" id="newForm">Criar novo rascunho</button>
   <div id="formEditorFields"></div>
   <p id="editorMessage" role="status"></p>
-  <div class="actions"><button type="button" class="secondary" id="closeEditor">Fechar</button><button type="submit" class="primary">Salvar e publicar</button></div>
+  <div class="actions"><button type="button" class="secondary" id="closeEditor">Voltar</button><button type="submit" class="primary">Salvar e publicar</button></div>
  </form>
 </dialog>
 <dialog id="accessSettings" class="form-card" aria-labelledby="accessTitle">
@@ -145,14 +148,26 @@ const scoreLabels = {
 };
 let config = structuredClone(defaultConfig);
 let configAvailable = false;
+let forms = {principal:{}};
+let editingFormId = null;
+const publicFormId = new URLSearchParams(location.search).get('form');
+
+function normalizeForm(saved = {}){
+ return {...defaultConfig, ...saved,
+  questions:{...baseQuestions,...saved.questions},
+  rules:{...defaultConfig.rules,...saved.rules},
+  score:{...defaultConfig.score,...saved.score}};
+}
+
+function formLink(id){
+ return '?form='+encodeURIComponent(id);
+}
 
 async function loadFormConfig(){
  try{
   const saved = await adminRequest('form_read');
-  config = {...defaultConfig, ...saved,
-   questions:{...baseQuestions,...saved.questions},
-   rules:{...defaultConfig.rules,...saved.rules},
-   score:{...defaultConfig.score,...saved.score}};
+  forms = saved.forms ?? {principal:saved};
+  config = normalizeForm(forms[publicFormId || 'principal']);
   configAvailable = true;
  }catch{
   configAvailable = false;
@@ -293,22 +308,65 @@ function renderFormEditor(draft){
  };
 }
 
-async function openFormEditor(create){
- if(temporaryAccess) return;
+function renderFormList(){
+ const container = $('publishedForms');
+ container.replaceChildren();
+ for(const [id,saved] of Object.entries(forms)){
+  const row = document.createElement('div');
+  row.className = 'panel';
+  row.style.marginBottom = '12px';
+  const title = document.createElement('strong');
+  title.textContent = saved.title || defaultConfig.title;
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.style.marginTop = '8px';
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'secondary';
+  edit.textContent = 'Editar';
+  edit.onclick = ()=>openFormEditor(id);
+  const open = document.createElement('a');
+  open.className = 'primary';
+  open.style.display = 'inline-block';
+  open.href = formLink(id);
+  open.target = '_blank';
+  open.rel = 'noopener';
+  open.textContent = 'Abrir para preencher';
+  actions.append(edit,open);
+  row.append(title,actions);
+  container.append(row);
+ }
+}
+
+async function showFormList(){
+ if(!signedIn || temporaryAccess) return;
  await loadFormConfig();
- if(!configAvailable){alert('Execute atualizar-formulario.sql no Supabase para publicar alterações.');return;}
+ if(!configAvailable){alert('Não foi possível carregar os formulários no Supabase.');return;}
+ renderFormList();
+ $('formList').showModal();
+}
+
+function openFormEditor(id){
+ editingFormId = id ?? crypto.randomUUID();
+ $('formList').close();
  $('editorMessage').textContent = '';
- renderFormEditor(create ? structuredClone(defaultConfig) : config);
+ $('formEditorTitle').textContent = id ? 'Editar formulário' : 'Criar formulário';
+ $('editorDescription').textContent = id
+  ? 'Ao publicar, o formulário continua no mesmo link.'
+  : 'Ao publicar, este formulário ganha um link próprio.';
+ renderFormEditor(id ? normalizeForm(forms[id]) : structuredClone(defaultConfig));
  $('formEditor').showModal();
 }
-$('editFormButton').onclick = ()=>openFormEditor(false);
-$('createFormButton').onclick = ()=>openFormEditor(true);
+$('editFormButton').onclick = showFormList;
+$('createFormButton').onclick = ()=>openFormEditor();
+$('closeFormList').onclick = ()=>$('formList').close();
 $('closeEditor').onclick = ()=>$('formEditor').close();
-$('newForm').onclick = ()=>{
- if(confirm('Iniciar um novo rascunho? O formulário publicado só muda quando você salvar.')){
-  renderFormEditor(structuredClone(defaultConfig));
+$('formEditor').addEventListener('close',()=>{
+ if(signedIn && !temporaryAccess){
+  renderFormList();
+  $('formList').showModal();
  }
-};
+});
 $('formSettings').onsubmit = async event => {
  event.preventDefault();
  const form = event.currentTarget;
@@ -336,10 +394,12 @@ $('formSettings').onsubmit = async event => {
  draft.extra = extra;
  button.disabled = true;
  try{
-  const result = await adminRequest('form_save',draft);
+  const id = editingFormId;
+  const result = await adminRequest('form_publish',{id,form:draft});
   if(!result.updated) throw new Error('A publicação não foi confirmada.');
-  config = draft;
-  $('editorMessage').textContent = 'Formulário publicado.';
+  forms[id] = draft;
+  config = normalizeForm(forms.principal);
+  $('formEditor').close();
   await loadLeads();
  }catch(error){
   $('editorMessage').textContent = error.message;
@@ -353,9 +413,10 @@ async function loadLeads(){
  try{
  const rows=await adminRequest('leads');
  leadsCache=rows.map(r=>{
- const l={id:String(r.id),created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
+ const l={id:String(r.id),formId:r.form_id || 'principal',created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
  l.answers=Array.isArray(r.form_answers)?r.form_answers.filter(item=>typeof item?.question==='string' && typeof item.answer==='string'):[];
- l.score=scoreLead(l);l.hot=l.score>=config.score.hot;return l;
+ const weights = normalizeForm(forms[l.formId]).score;
+ l.score=scoreLead(l,weights);l.hot=l.score>=weights.hot;return l;
  });renderLeads();
  }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
 }
@@ -422,9 +483,23 @@ async function logout(){
  }catch(err){alert(err.message);}
 }
 function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
-if(!new URLSearchParams(location.search).has('admin') || new URLSearchParams(location.search).has('form')){
- $('loginView').style.display='none';$('appView').style.display='block';document.querySelector('.topbar').style.display='none';loadFormConfig().then(showLeadForm);
-}else{adminRequest('session').then(session=>{if(session.active)enterDashboard(session);}).catch(error=>{$('loginError').textContent=error.message;});}
+if(publicFormId !== null){
+ $('loginView').style.display='none';
+ $('appView').style.display='block';
+ document.querySelector('.topbar').style.display='none';
+ $('dashboard').classList.add('hidden');
+ $('formPage').classList.remove('hidden');
+ $('formPage').textContent = 'Carregando formulário…';
+ loadFormConfig().then(()=>{
+  if(configAvailable && Object.hasOwn(forms,publicFormId || 'principal')) showLeadForm();
+  else $('formPage').textContent = configAvailable
+   ? 'Este formulário não foi encontrado.'
+   : 'Não foi possível carregar o formulário. Atualize a página e tente novamente.';
+ });
+}else{
+ adminRequest('session').then(session=>{if(session.active)enterDashboard(session);})
+  .catch(error=>{$('loginError').textContent=error.message;});
+}
 function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden');$('formPage').classList.remove('hidden');$('formPage').innerHTML=`
  <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>${esc(config.title)}</h1><p>${esc(config.subtitle)}</p></header><div class="form-card">
  <form id="leadForm">
@@ -609,14 +684,14 @@ async function submitLead(e, answers){
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
   const row={name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'};
   if(answers.length) row.form_answers=answers;
+  if(publicFormId && publicFormId!=='principal') row.form_id=publicFormId;
   const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
   if(!response.ok){const detail=await response.text();throw new Error(supabaseError(response.status,detail));}
   if(signedIn)await loadLeads();
   $('formPage').innerHTML=`<div class="form-page"><div class="form-card" style="text-align:center;padding:40px 25px"><div style="font-size:42px;color:var(--green)">✓</div><h1>Formulário enviado!</h1><p class="muted">Obrigado pelo interesse. Nossa equipe poderá entrar em contato em breve.</p><button class="secondary" onclick="showLeadForm()">Novo formulário</button></div></div>`;
  }catch(err){console.error(err);alert('Não foi possível enviar o formulário. '+(err instanceof TypeError?'Falha de rede ou bloqueio de CORS. Verifique a URL e a conexão.':err.message));if(submitButton){submitButton.disabled=false;submitButton.textContent=config.send;$('backQuestion').disabled=false;}}
 }
-function scoreLead(l){
- const weights = config.score;
+function scoreLead(l,weights=config.score){
  let total = l.urgency==='Compra planejada'?weights.planned:l.urgency==='Urgente'?weights.urgent:0;
  if(l.knows==='Sim') total+=weights.knows;
  if(l.intent==='Quero contratar') total+=weights.wants;
