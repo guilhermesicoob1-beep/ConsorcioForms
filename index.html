@@ -55,7 +55,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 
 <section id="appView">
- <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="editFormButton" type="button">Formulários</button><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="editFormButton" type="button">Formulários</button><button class="secondary small" id="createFormButton" type="button">Criar formulário</button><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
  <main class="wrap">
   <div id="dashboard">
    <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" onclick="showLeadForm()">＋ Abrir formulário</button></div></div>
@@ -186,11 +186,47 @@ function matchesEntryPercent(entry, assetValue, operator, percent){
  }
 }
 
+function readOptions(value){
+ return [...new Set(value.split(',').map(option=>option.trim()).filter(Boolean))];
+}
+
+function refreshRoutes(){
+ const blocks = [...$('extraEditors').children];
+ blocks.forEach((block,index)=>{
+  const container = block.querySelector('[data-routes]');
+  const type = block.querySelector('[name="extra-type"]').value;
+  const choices = readOptions(block.querySelector('[name="extra-options"]').value);
+  container.replaceChildren();
+  if(type!=='Opções' || !choices.length) return;
+  const targets = blocks.slice(index+1).map((target,offset)=>[
+   target.dataset.key,
+   (index+offset+2)+'. '+(target.querySelector('[name="extra-title"]').value.trim() || 'Pergunta sem título')
+  ]);
+  for(const choice of choices){
+   const label = document.createElement('label');
+   label.style.display='block';
+   label.textContent = 'Se responder “'+choice+'” → ';
+   const select = document.createElement('select');
+   for(const [key,title] of [['next','Próxima pergunta'],...targets,['submit','Ir para o envio']]){
+    select.add(new Option(title,key));
+   }
+   const saved = block.routes.get(choice);
+   if([...select.options].some(option=>option.value===saved)) select.value=saved;
+   else block.routes.delete(choice);
+   select.onchange = ()=>block.routes.set(choice,select.value);
+   label.append(select);
+   container.append(label);
+  }
+ });
+}
+
 let extraEditorId = 0;
 function addQuestionEditor(question = {}){
  const id = ++extraEditorId;
  const block = document.createElement('fieldset');
  block.style.margin = '12px 0';
+ block.dataset.key = question.id || 'question-'+crypto.randomUUID();
+ block.routes = new Map((question.routes ?? []).map(route=>[route.answer,route.target]));
  block.innerHTML = '<legend>Pergunta adicional</legend>'+
  editField('Pergunta','extra-title',question.title ?? '', 'required maxlength="200"','extra-title-'+id)+
  '<label>Tipo <select name="extra-type">'+options(['Texto','Número','Opções'],question.type)+'</select></label>'+
@@ -204,7 +240,7 @@ function addQuestionEditor(question = {}){
  '</select></label> <label>Percentual (%) <input name="extra-percent" type="number" min="0" step="0.01" value="'+esc(question.percent ?? 50)+'" required></label>'+
  '<p class="hint">Exemplo com 50%. Para um bem de R$ 100.000, a entrada de R$ 50.000 corresponde a 50%. Sem entrada corresponde a 0%.</p></div>'+
  '<p><label><input type="checkbox" name="extra-required"'+(question.required?' checked':'')+'> Obrigatória</label></p>'+
- '<button class="danger" type="button">Excluir pergunta</button>';
+ '<div data-routes></div><p><button class="danger" type="button">Excluir pergunta</button></p>';
  const field = block.querySelector('[name="extra-field"]');
  const match = block.querySelector('[name="extra-match"]');
  const update = selected => {
@@ -220,9 +256,13 @@ function addQuestionEditor(question = {}){
  block.querySelector('button').addEventListener('click',()=>{
   if(confirm('Excluir esta pergunta do rascunho? A mudança entra no ar ao salvar e publicar.')){
    block.remove();
+   refreshRoutes();
    $('editorMessage').textContent = 'Pergunta removida do rascunho.';
   }
  });
+ for(const name of ['extra-title','extra-type','extra-options']){
+  block.querySelector('[name="'+name+'"]').addEventListener('change',refreshRoutes);
+ }
  $('extraEditors').append(block);
 }
 
@@ -245,17 +285,24 @@ function renderFormEditor(draft){
  Object.keys(scoreLabels).map(key => editField(scoreLabels[key],'score-'+key,draft.score[key],
  'required type="number" min="0" max="'+(key==='percent'?100:1000)+'"')).join('');
  draft.extra.forEach(addQuestionEditor);
- $('addExtra').onclick = ()=>addQuestionEditor();
+ refreshRoutes();
+ $('addExtra').onclick = ()=>{
+  addQuestionEditor();
+  refreshRoutes();
+  $('extraEditors').lastElementChild.querySelector('[name="extra-title"]').focus();
+ };
 }
 
-$('editFormButton').onclick = async () => {
+async function openFormEditor(create){
  if(temporaryAccess) return;
  await loadFormConfig();
  if(!configAvailable){alert('Execute atualizar-formulario.sql no Supabase para publicar alterações.');return;}
  $('editorMessage').textContent = '';
- renderFormEditor(config);
+ renderFormEditor(create ? structuredClone(defaultConfig) : config);
  $('formEditor').showModal();
-};
+}
+$('editFormButton').onclick = ()=>openFormEditor(false);
+$('createFormButton').onclick = ()=>openFormEditor(true);
 $('closeEditor').onclick = ()=>$('formEditor').close();
 $('newForm').onclick = ()=>{
  if(confirm('Iniciar um novo rascunho? O formulário publicado só muda quando você salvar.')){
@@ -269,8 +316,12 @@ $('formSettings').onsubmit = async event => {
  const fields = new FormData(form);
  const extra = Array.from($('extraEditors').children, block=>{
   const get = name => block.querySelector('[name="extra-'+name+'"]');
-  return {title:get('title').value.trim(), type:get('type').value,
-   options:get('options').value.split(',').map(value=>value.trim()).filter(Boolean),
+  const choices = readOptions(get('options').value);
+  const type = get('type').value;
+  const routes = type==='Opções' ? choices.map(answer=>({answer,target:block.routes.get(answer)}))
+   .filter(route=>route.target && route.target!=='next') : [];
+  return {id:block.dataset.key, title:get('title').value.trim(), type,
+   options:choices, routes,
    field:get('field').value, match:get('match').value, required:get('required').checked,
    ...(get('field').value==='entryPercent' ? {operator:get('operator').value, percent:Number(get('percent').value)} : {})};
  });
@@ -414,11 +465,18 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   field.dataset.extra = index;
   const name = 'extra-'+index;
   field.innerHTML = '<label for="'+name+'">'+esc(question.title)+'</label>';
-  const input = document.createElement(question.type==='Opções'?'select':'input');
+  if(question.type==='Opções'){
+   field.innerHTML = '<div role="group" aria-label="'+esc(question.title)+'">'+
+    '<p><strong>'+esc(question.title)+'</strong></p><div class="choices">'+
+    question.options.map(choice=>'<label class="choice"><input type="radio" name="'+name+'" value="'+esc(choice)+'"'+
+     (question.required?' required':'')+'> '+esc(choice)+'</label>').join('')+'</div></div>';
+   form.insertBefore(field,controls);
+   return;
+  }
+  const input = document.createElement('input');
   input.id = input.name = name;
   input.required = question.required;
-  if(question.type==='Opções') input.innerHTML = '<option value="">Selecione</option>'+options(question.options);
-  else input.type = question.type==='Número'?'number':'text';
+  input.type = question.type==='Número'?'number':'text';
   if(input.type==='number') input.step='any';
   if(input.type==='text') input.maxLength=500;
   field.append(input);
@@ -463,15 +521,29 @@ function setupQuestions(form){
   delete $('entryValue').dataset.none;
   $('entryValue').value = '';
  }));
+ const history = [];
  let current = questions[0];
+ const readAnswer = question => {
+  const input = question.querySelector('input,select');
+  return input.type==='radio' ? (question.querySelector('input:checked')?.value ?? '') : input.value;
+ };
+ function nextQuestion(){
+  const steps = applicable();
+  const rule = config.extra[current.dataset.extra];
+  const target = rule?.routes?.find(route=>route.answer===readAnswer(current))?.target;
+  if(target==='submit') return null;
+  if(target){
+   const destination = questions.findIndex(step=>config.extra[step.dataset.extra]?.id===target);
+   if(destination>questions.indexOf(current)) return steps.find(step=>questions.indexOf(step)>=destination);
+  }
+  return steps[steps.indexOf(current)+1];
+ }
 
  function renderQuestion(focus){
-  const steps = applicable();
-  const index = steps.indexOf(current);
   questions.forEach(question => question.classList.toggle('hidden', question !== current));
-  progress.textContent = 'Pergunta ' + (index + 1) + ' de ' + steps.length;
-  $('backQuestion').classList.toggle('hidden', index === 0);
-  $('nextQuestion').textContent = index === steps.length - 1 ? config.send : config.next;
+  progress.textContent = 'Pergunta ' + (history.length + 1);
+  $('backQuestion').classList.toggle('hidden', !history.length);
+  $('nextQuestion').textContent = nextQuestion() ? config.next : config.send;
   if(focus){
    current.tabIndex = -1;
    current.focus();
@@ -479,11 +551,14 @@ function setupQuestions(form){
  }
 
  $('backQuestion').addEventListener('click', () => {
-  const steps = applicable();
-  current = steps[steps.indexOf(current) - 1];
+  if(!history.length) return;
+  current = history.pop();
   renderQuestion(true);
  });
 
+ form.addEventListener('change', event=>{
+  if(event.target.type==='radio' && current.contains(event.target)) form.requestSubmit();
+ });
  form.noValidate = true;
  form.addEventListener('submit', event => {
   event.preventDefault();
@@ -499,15 +574,20 @@ function setupQuestions(form){
    input.setCustomValidity('');
    if(!valid) return;
   }
-  const steps = applicable();
-  const next = steps[steps.indexOf(current) + 1];
+  const next = nextQuestion();
   if(!next){
-   const answers = steps.filter(step=>step.dataset.extra !== undefined).map(step=>({
-    question:config.extra[step.dataset.extra].title, answer:step.querySelector('input,select').value
+   if(event.submitter !== $('nextQuestion')){
+    $('nextQuestion').textContent = config.send;
+    $('nextQuestion').focus();
+    return;
+   }
+   const answers = [...history,current].filter(step=>step.dataset.extra !== undefined).map(step=>({
+    question:config.extra[step.dataset.extra].title, answer:readAnswer(step)
    })).filter(item=>item.answer !== '');
    submitLead(event, answers);
    return;
   }
+  history.push(current);
   current = next;
   renderQuestion(true);
  });
