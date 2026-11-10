@@ -66,7 +66,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
    </div>
    <div class="panel" style="margin-bottom:14px"><b>Relatório de formulários</b><p class="muted" style="margin-bottom:0">Os indicadores são atualizados automaticamente conforme os formulários são enviados e os leads são movimentados.</p></div>
    <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Leads planejados aparecem antes dos urgentes; dentro de cada grupo, os mais propensos ficam no topo.</div></div></div>
-   <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="hot">Somente propensos</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
+   <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="hot">Somente propensos</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
    <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th>Urgência</th><th>Interesse</th><th>Classificação</th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
   </div>
   <div id="formPage" class="hidden"></div>
@@ -150,6 +150,20 @@ let config = structuredClone(defaultConfig);
 let configAvailable = false;
 let forms = {principal:{}};
 let editingFormId = null;
+const crmFields = {
+ name:'Nome', phone:'WhatsApp com DDD', asset:'Bem desejado', value:'Valor do bem',
+ entry:'Valor da entrada', urgency:'Urgência (Urgente ou Compra planejada)',
+ knows:'Conhece consórcio (Sim ou Não)', intent:'Interesse (Quero contratar ou Estou pesquisando)'
+};
+function updateFormFilter(){
+ const filter=$('filterForm'), selected=filter.value;
+ filter.replaceChildren(new Option('Todos os formulários',''));
+ for(const [id,form] of Object.entries(forms)) filter.add(new Option(form.title || defaultConfig.title,id));
+ if(Object.hasOwn(forms,selected)) filter.value=selected;
+}
+function leadValues(answers){
+ return Object.fromEntries(answers.filter(item=>item.role).map(item=>[item.role,item.answer.trim()]));
+}
 const publicFormId = new URLSearchParams(location.search).get('form');
 
 function normalizeForm(saved = {}){
@@ -169,6 +183,7 @@ async function loadFormConfig(){
   forms = saved.forms ?? {principal:saved};
   config = normalizeForm(forms[publicFormId || 'principal']);
   configAvailable = true;
+  updateFormFilter();
  }catch{
   configAvailable = false;
  }
@@ -208,10 +223,21 @@ function readOptions(value){
 function refreshRoutes(){
  const blocks = [...$('extraEditors').children];
  blocks.forEach((block,index)=>{
+  const field = block.querySelector('[name="extra-field"]');
+  const selected = field.value || block.pendingField || '';
+  delete block.pendingField;
+  field.replaceChildren(new Option('Sempre',''));
+  if(index>0) field.add(new Option('Entrada em % do valor do bem','entryPercent'));
+  for(const prev of blocks.slice(0,index)){
+   field.add(new Option(prev.querySelector('[name="extra-title"]').value || 'Pergunta sem título',prev.dataset.key));
+  }
+  if([...field.options].some(option=>option.value===selected)) field.value=selected;
+  block.updateCondition();
   const container = block.querySelector('[data-routes]');
   const type = block.querySelector('[name="extra-type"]').value;
   const choices = readOptions(block.querySelector('[name="extra-options"]').value);
   container.replaceChildren();
+  block.querySelector('[data-choices]').hidden = type!=='Opções';
   if(type!=='Opções' || !choices.length) return;
   const targets = blocks.slice(index+1).map((target,offset)=>[
    target.dataset.key,
@@ -241,15 +267,17 @@ function addQuestionEditor(question = {}){
  const block = document.createElement('fieldset');
  block.style.margin = '12px 0';
  block.dataset.key = question.id || 'question-'+crypto.randomUUID();
+ block.pendingField = question.field;
  block.routes = new Map((question.routes ?? []).map(route=>[route.answer,route.target]));
- block.innerHTML = '<legend>Pergunta adicional</legend>'+
+ block.innerHTML = '<legend>Pergunta</legend>'+
  editField('Pergunta','extra-title',question.title ?? '', 'required maxlength="200"','extra-title-'+id)+
- '<label>Tipo <select name="extra-type">'+options(['Texto','Número','Opções'],question.type)+'</select></label>'+
- editField('Opções separadas por vírgula','extra-options',(question.options ?? []).join(', '), 'maxlength="500"','extra-options-'+id)+
- '<label>Mostrar se <select name="extra-field"><option value="">Sempre</option>'+
- Object.keys(conditionOptions).map(key => '<option value="'+key+'"'+(key===question.field?' selected':'')+'>'+esc(config.questions[key])+'</option>').join('')+
- '<option value="entryPercent"'+(question.field==='entryPercent'?' selected':'')+'>Entrada em % do valor do bem</option>'+
- '</select></label> <label data-answer>Resposta <select name="extra-match"></select></label>'+
+ '<label>Tipo <select name="extra-type"><option value="Texto">Texto</option><option value="Opções"'+(question.type==='Opções'?' selected':'')+'>Botões</option></select></label>'+
+ '<div data-choices>'+editField('Textos dos botões separados por vírgula','extra-options',(question.options ?? []).join(', '),'maxlength="500"','extra-options-'+id)+'</div>'+
+ '<p><label>Usar no CRM <select name="extra-role"><option value="">Somente resposta</option>'+
+ Object.entries(crmFields).map(([key,label])=>'<option value="'+key+'"'+(key===question.role?' selected':'')+'>'+esc(label)+'</option>').join('')+
+ '</select></label></p>'+
+ '<label>Mostrar se <select name="extra-field"></select></label> '+
+ '<label data-answer>Resposta igual a <input name="extra-match" value="'+esc(question.match ?? '')+'"></label>'+
  '<div data-percent hidden><label>Comparação <select name="extra-operator">'+
  Object.entries(percentOperators).map(([key,label])=>'<option value="'+key+'"'+(key===question.operator?' selected':'')+'>'+label+'</option>').join('')+
  '</select></label> <label>Percentual (%) <input name="extra-percent" type="number" min="0" step="0.01" value="'+esc(question.percent ?? 50)+'" required></label>'+
@@ -258,16 +286,15 @@ function addQuestionEditor(question = {}){
  '<div data-routes></div><p><button class="danger" type="button">Excluir pergunta</button></p>';
  const field = block.querySelector('[name="extra-field"]');
  const match = block.querySelector('[name="extra-match"]');
- const update = selected => {
-  match.innerHTML = options(conditionOptions[field.value] ?? [], selected);
+ block.updateCondition = () => {
   const usesPercent = field.value === 'entryPercent';
   match.disabled = !field.value || usesPercent;
+  match.required = !match.disabled;
   block.querySelector('[data-answer]').hidden = match.disabled;
   block.querySelector('[data-percent]').hidden = !usesPercent;
   block.querySelector('[name="extra-percent"]').disabled = !usesPercent;
  };
- field.addEventListener('change',()=>update());
- update(question.match);
+ field.addEventListener('change',block.updateCondition);
  block.querySelector('button').addEventListener('click',()=>{
   if(confirm('Excluir esta pergunta do rascunho? A mudança entra no ar ao salvar e publicar.')){
    block.remove();
@@ -285,16 +312,13 @@ function renderFormEditor(draft){
  const editor = $('formEditorFields');
  editor.innerHTML = '<h3>Capa e botões</h3>'+
  editField('Título','title',draft.title,'required maxlength="150"')+
- editField('Descrição','subtitle',draft.subtitle,'maxlength="500"')+
- editField('Imagem de fundo da capa (URL HTTPS)','cover',draft.cover,'type="url" maxlength="2000" pattern="https://.+"')+
+ editField('Banner do topo (URL HTTPS da imagem)','cover',draft.cover,'type="url" maxlength="2000" pattern="https://.+"')+
+ editField('Cor de fundo','background',draft.background || '#101810','type="color"')+
  editField('Botão Próxima','next',draft.next,'required maxlength="50"')+
  editField('Botão Voltar','back',draft.back,'required maxlength="50"')+
  editField('Botão Enviar','send',draft.send,'required maxlength="50"')+
  '<h3>Perguntas do formulário</h3>'+
- Object.keys(baseQuestions).map(key => editField(baseQuestions[key],'q-'+key,draft.questions[key],'required maxlength="200"')).join('')+
- '<h3>Condições das perguntas</h3>'+
- '<label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label><br>'+
- '<label>Mostrar valor da entrada <select name="rule-entry">'+options(['Sim','Sempre'],draft.rules.entry)+'</select></label>'+
+ '<p class="hint">Use os campos do CRM para aproveitar o WhatsApp, a pontuação e as condições por percentual.</p>'+
  '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
  '<h3>Pontuação</h3>'+
  Object.keys(scoreLabels).map(key => editField(scoreLabels[key],'score-'+key,draft.score[key],
@@ -352,7 +376,7 @@ function openFormEditor(id){
  $('editorMessage').textContent = '';
  $('formEditorTitle').textContent = id ? 'Editar formulário' : 'Criar formulário';
  $('editorDescription').textContent = id
-  ? 'Ao publicar, o formulário continua no mesmo link.'
+  ? forms[id]?.custom ? 'Ao publicar, o formulário continua no mesmo link.' : 'Ao publicar, este link passa a mostrar apenas as perguntas deste editor. Revise as condições antigas que dependiam das perguntas padrão.'
   : 'Ao publicar, este formulário ganha um link próprio.';
  renderFormEditor(id ? normalizeForm(forms[id]) : structuredClone(defaultConfig));
  $('formEditor').showModal();
@@ -379,17 +403,16 @@ $('formSettings').onsubmit = async event => {
   const routes = type==='Opções' ? choices.map(answer=>({answer,target:block.routes.get(answer)}))
    .filter(route=>route.target && route.target!=='next') : [];
   return {id:block.dataset.key, title:get('title').value.trim(), type,
-   options:choices, routes,
+   options:choices, routes, role:get('role').value,
    field:get('field').value, match:get('match').value, required:get('required').checked,
    ...(get('field').value==='entryPercent' ? {operator:get('operator').value, percent:Number(get('percent').value)} : {})};
  });
- if(extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
-  $('editorMessage').textContent = 'Preencha o título e as opções das perguntas adicionais.';
+ if(!extra.length || extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
+  $('editorMessage').textContent = 'Adicione pelo menos uma pergunta e preencha os textos dos botões, quando houver.';
   return;
  }
- const draft = Object.fromEntries(['title','subtitle','cover','next','back','send'].map(key=>[key,fields.get(key).trim()]));
- draft.questions = Object.fromEntries(Object.keys(baseQuestions).map(key=>[key,fields.get('q-'+key).trim()]));
- draft.rules = {other:fields.get('rule-other'),entry:fields.get('rule-entry')};
+ const draft = Object.fromEntries(['title','cover','background','next','back','send'].map(key=>[key,fields.get(key).trim()]));
+ draft.custom = true;
  draft.score = Object.fromEntries(Object.keys(scoreLabels).map(key=>[key,Number(fields.get('score-'+key))]));
  draft.extra = extra;
  button.disabled = true;
@@ -398,6 +421,7 @@ $('formSettings').onsubmit = async event => {
   const result = await adminRequest('form_publish',{id,form:draft});
   if(!result.updated) throw new Error('A publicação não foi confirmada.');
   forms[id] = draft;
+  updateFormFilter();
   config = normalizeForm(forms.principal);
   $('formEditor').close();
   await loadLeads();
@@ -413,7 +437,7 @@ async function loadLeads(){
  try{
  const rows=await adminRequest('leads');
  leadsCache=rows.map(r=>{
- const l={id:String(r.id),formId:r.form_id || 'principal',created:r.created_at,name:r.name||'',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
+ const l={id:String(r.id),formId:r.form_id || 'principal',created:r.created_at,name:r.name||'Lead sem nome',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
  l.answers=Array.isArray(r.form_answers)?r.form_answers.filter(item=>typeof item?.question==='string' && typeof item.answer==='string'):[];
  const weights = normalizeForm(forms[l.formId]).score;
  l.score=scoreLead(l,weights);l.hot=l.score>=weights.hot;return l;
@@ -520,8 +544,23 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
  const form = $('leadForm');
+ if(config.custom){
+  form.querySelectorAll('.section').forEach(section=>section.remove());
+  const page = document.querySelector('.form-page');
+  const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#101810';
+  document.body.style.background = color;
+  page.style.background = color;
+  const header = document.querySelector('.form-hero');
+  if(/^https:\/\//i.test(config.cover)){
+   const banner=document.createElement('img');
+   banner.src=config.cover;
+   banner.alt='';
+   banner.style.cssText='display:block;width:100%;height:auto;border-radius:16px;margin-bottom:18px';
+   header.replaceWith(banner);
+  }else header.remove();
+ }
  const cover = document.querySelector('.form-hero');
- if(config.cover){
+ if(!config.custom && config.cover){
   const link = document.createElement('a');
   link.href = config.cover;
   if(link.protocol === 'https:'){
@@ -570,11 +609,31 @@ function setupQuestions(form){
  for (const question of questions) form.insertBefore(question, controls);
  form.querySelectorAll('.section').forEach(section => section.remove());
 
+ const history = [];
+ let current = questions[0];
+ const readAnswer = question => {
+  const input = question.querySelector('input,select');
+  return input.type==='radio' ? (question.querySelector('input:checked')?.value ?? '') : input.value;
+ };
+ const answered = () => [...history,current].filter(step=>step?.dataset.extra !== undefined)
+  .map(step=>({question:config.extra[step.dataset.extra], answer:readAnswer(step)}))
+  .filter(item=>item.answer !== '');
  const applicable = () => questions.filter(question => {
   if(question.id === 'otherWrap') return config.rules.other === 'Sempre' || form.asset.value === 'Outro';
   if(question.id === 'entryWrap') return config.rules.entry === 'Sempre' || form.hasEntry.value === 'Sim';
   if(question.dataset.extra === undefined) return true;
   const rule = config.extra[question.dataset.extra];
+  if(config.custom){
+   if(!rule.field) return true;
+   const previous=answered();
+   if(rule.field==='entryPercent'){
+    const values=leadValues(previous.map(item=>({role:item.question.role,answer:item.answer})));
+    return values.value !== undefined && values.entry !== undefined &&
+     matchesEntryPercent(moneyNumber(values.entry),moneyNumber(values.value),rule.operator,rule.percent);
+   }
+   return previous.some(item=>item.question.id===rule.field &&
+    item.answer.trim().toLowerCase()===rule.match.trim().toLowerCase());
+  }
   if(rule.field==='entryPercent'){
    const input = $('entryValue');
    const entry = input.dataset.none || (form.hasEntry.value==='Não' && config.rules.entry!=='Sempre')
@@ -586,6 +645,7 @@ function setupQuestions(form){
   return !rule.field || answer === rule.match;
  });
  $('backQuestion').textContent = config.back;
+ if($('noEntry')){
  $('noEntry').onclick = () => {
   $('entryValue').dataset.none = 'true';
   $('entryValue').value = '';
@@ -596,12 +656,7 @@ function setupQuestions(form){
   delete $('entryValue').dataset.none;
   $('entryValue').value = '';
  }));
- const history = [];
- let current = questions[0];
- const readAnswer = question => {
-  const input = question.querySelector('input,select');
-  return input.type==='radio' ? (question.querySelector('input:checked')?.value ?? '') : input.value;
- };
+ }
  function nextQuestion(){
   const steps = applicable();
   const rule = config.extra[current.dataset.extra];
@@ -611,7 +666,7 @@ function setupQuestions(form){
    const destination = questions.findIndex(step=>config.extra[step.dataset.extra]?.id===target);
    if(destination>questions.indexOf(current)) return steps.find(step=>questions.indexOf(step)>=destination);
   }
-  return steps[steps.indexOf(current)+1];
+  return steps.find(step=>questions.indexOf(step)>questions.indexOf(current));
  }
 
  function renderQuestion(focus){
@@ -656,10 +711,9 @@ function setupQuestions(form){
     $('nextQuestion').focus();
     return;
    }
-   const answers = [...history,current].filter(step=>step.dataset.extra !== undefined).map(step=>({
-    question:config.extra[step.dataset.extra].title, answer:readAnswer(step)
-   })).filter(item=>item.answer !== '');
-   submitLead(event, answers);
+   submitLead(event, answered().map(item=>({
+    question:item.question.title, answer:item.answer, role:item.question.role
+   })));
    return;
   }
   history.push(current);
@@ -671,18 +725,36 @@ function setupQuestions(form){
 }
 function moneyNumber(v){return Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0;}
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});}
-async function submitLead(e, answers){
- e.preventDefault();const f=e.target,fd=new FormData(f);
+function customLeadRow(answers){
+ const values = leadValues(answers);
+ const phone = (values.phone ?? '').replace(/[^0-9]/g,'').replace(/^55(?=[0-9]{10,11}$)/,'');
+ const validPhone = /^[0-9]{10,11}$/.test(phone);
+ const price = moneyNumber(values.value);
+ const entry = moneyNumber(values.entry);
+ const canonical = (value, list)=>list.find(item=>item.toLowerCase()===value?.toLowerCase()) ?? null;
+ const urgency = canonical(values.urgency,['Urgente','Compra planejada','Planejamento']);
+ return {name:values.name || null,ddd:validPhone?phone.slice(0,2):null,phone:validPhone?phone.slice(2):null,
+  asset:values.asset || null,asset_price:price>0?price:null,entry_amount:entry,
+  has_entry:values.entry===undefined?null:entry>0?'Sim':'Não',
+  urgency:urgency==='Compra planejada'?'Planejamento':urgency,
+  knows_consorcio:canonical(values.knows,['Sim','Não']),
+  intent:canonical(values.intent,['Quero contratar','Estou pesquisando']),status:'Novo'};
+}
+function legacyLeadRow(fd){
  const amount=moneyNumber(fd.get('value'));
  const entry=moneyNumber(fd.get('entry'));
  const hasEntry=($('entryValue').dataset.none || entry<=0)?'Não':'Sim';
- if(amount<=0){alert('Informe um valor válido para o bem.');return;}
+ if(amount<=0) throw new Error('Informe um valor válido para o bem.');
  const lead={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),created:new Date().toISOString(),name:fd.get('name').trim(),ddd:fd.get('ddd'),phone:fd.get('phone'),asset:fd.get('asset')==='Outro'?fd.get('other').trim():fd.get('asset'),value:amount,hasEntry,entry:hasEntry==='Sim'?entry:0,urgency:fd.get('urgency'),knows:fd.get('knows'),intent:fd.get('intent'),status:'new'};
- lead.score=scoreLead(lead);lead.hot=lead.score>=config.score.hot;
+
+ return {name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'}; 
+}
+async function submitLead(e, answers){
+ e.preventDefault();const f=e.target,fd=new FormData(f);
  const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
-  const row={name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'};
+  const row=config.custom ? customLeadRow(answers) : legacyLeadRow(fd);
   if(answers.length) row.form_answers=answers;
   if(publicFormId && publicFormId!=='principal') row.form_id=publicFormId;
   const response=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(row)});
@@ -699,18 +771,20 @@ function scoreLead(l,weights=config.score){
  return total;
 }
 function renderLeads(){
- const all=getLeads();$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.hot).length;
+ const formId=$('filterForm').value;
+ const all=getLeads().filter(lead=>!formId || lead.formId===formId);$('countGenerated').textContent=all.length;$('countResponded').textContent=all.filter(x=>x.status==='responded').length;$('countClosed').textContent=all.filter(x=>x.status==='closed').length;$('countHot').textContent=all.filter(x=>x.hot).length;
  const q=($('search')?.value||'').toLowerCase(),filter=$('filter')?.value||'all';
  let rows=all.filter(l=>(l.name+' '+l.ddd+l.phone).toLowerCase().includes(q));
  if(filter==='hot')rows=rows.filter(l=>l.hot);else if(filter!=='all')rows=rows.filter(l=>l.status===filter);
  rows.sort((a,b)=>{const urg=(x)=>x.urgency==='Compra planejada'?0:1;return urg(a)-urg(b)||b.score-a.score||new Date(b.created)-new Date(a.created);});
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':'<span class="tag orange">Urgente</span>'}</td><td>${esc(l.intent)}</td><td>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${l.hot?'<span class="tag green">LEAD PROPENSO</span>':'<span class="tag">Em análise</span>'}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function statusTag(s){return s==='closed'?'<span class="tag red">Fechado</span>':s==='responded'?'<span class="tag orange">Em atendimento</span>':'<span class="tag">Novo</span>';}
 function makeMessage(l){
+ if(!l.asset) return 'Olá! Recebemos sua resposta ao formulário e gostaríamos de conversar com você. Como podemos ajudar?';
  const first=l.name.split(' ')[0],ratio=l.value?l.entry/l.value:0;
  let body;
  if(l.urgency==='Urgente'&&l.hasEntry==='Sim'&&ratio<.5){
@@ -731,14 +805,14 @@ function showDetails(id){
  ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${detail('Pontuação de interesse',l.score+' pontos')}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
  <h3 style="font-size:15px;margin:20px 0 8px">Mensagem personalizada para WhatsApp</h3><div class="message">${esc(msg)}</div>
- <div class="actions" style="margin-top:16px"><button class="primary" onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
+ <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
  </div></div>`;
 }
 function detail(k,v){return `<div class="detail"><small>${k}</small><b>${esc(v)}</b></div>`;}
 function closeModal(){$('modalRoot').innerHTML='';}
 async function openWhatsApp(id){
  const lead=getLeads().find(item=>item.id===id);
- if(!lead) return;
+ if(!lead?.phone) return;
  const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(makeMessage(lead));
  const tab = window.open('about:blank','_blank');
  if(!tab){alert('Permita a abertura de novas janelas para acessar o WhatsApp.');return;}
