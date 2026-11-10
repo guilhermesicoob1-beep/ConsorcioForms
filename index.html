@@ -38,6 +38,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;border-
 body:has(.topbar[style*="none"]) {background:#101810}
 @media(max-width:480px){.form-page{margin:0 auto;border-radius:20px}.two{grid-template-columns:64px minmax(0,1fr)}}
 
+/* Brilho nos elementos interativos, respeitando a cor principal */
+.form-page.interactive-glow button,.form-page.interactive-glow .choice,.form-page.interactive-glow a{transition:box-shadow .22s ease,filter .22s ease,transform .22s ease}
+.form-page.interactive-glow button:not(:disabled):hover,.form-page.interactive-glow .choice:hover,.form-page.interactive-glow a:hover{box-shadow:0 0 0 2px var(--form-accent),0 0 19px 3px color-mix(in srgb,var(--form-accent) 48%,transparent);filter:brightness(1.07);transform:translateY(-1px)}
+@media(prefers-reduced-motion:reduce){.form-page.interactive-glow button,.form-page.interactive-glow .choice,.form-page.interactive-glow a{transition:none}}
 /* Refined management interface */
 #formEditor{width:min(900px,96vw);max-width:96vw;border:1px solid #dce8e1;border-radius:22px;box-shadow:0 30px 90px #082d2440;padding:30px}
 #formEditor::backdrop,#formList::backdrop{background:#09241bb8;backdrop-filter:blur(5px)}
@@ -48,7 +52,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 #formEditor fieldset p{margin:12px 0}#formEditor .field input{min-height:43px}
 .editor-steps{display:flex;gap:8px;flex-wrap:wrap;margin:17px 0}.editor-steps span{padding:8px 12px;border-radius:30px;background:#eaf5ee;color:#236a4e;font-size:12px;font-weight:750}
 .appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:#f6faf7;border:1px solid #e2ece6;padding:16px;border-radius:16px}.appearance-options .field{margin:0}.toggle-row{grid-column:1/-1;display:flex;align-items:center;gap:9px;font-size:13px}.toggle-row input{accent-color:#008b55}.appearance-preview{height:75px;border-radius:13px;margin-top:12px;display:grid;place-items:center;color:white;text-shadow:0 1px 4px #0008;font-weight:700}
-.public-banner{transition:filter .35s ease,box-shadow .35s ease,transform .35s ease}.glow-banner:hover{filter:brightness(1.12);box-shadow:0 0 32px #a4ff9870;transform:translateY(-2px)}
+.public-banner{transition:filter .35s ease,box-shadow .35s ease,transform .35s ease}.glow-banner:hover{filter:brightness(1.04)}
 .sorting-panel{margin-bottom:15px}.sort-row{display:flex;align-items:center;gap:8px;margin:9px 0}.sort-row select{min-width:0;flex:1;border:1px solid var(--line);border-radius:9px;padding:10px;background:white}.sort-number{display:grid;place-items:center;min-width:27px;height:27px;background:#e3f5e9;border-radius:50%;font-size:12px;font-weight:800}
 .editor-tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin:18px 0;padding-bottom:10px}.editor-tab{background:#f0f5f1;color:#355547}.editor-tab.active{background:#008b55;color:white}.reply-item{padding:15px;border:1px solid var(--line);border-radius:13px;margin:10px 0}.reply-item p{white-space:pre-wrap}
 @media(max-width:650px){.appearance-options{grid-template-columns:1fr}.sort-row{flex-wrap:wrap}.sort-row select{flex-basis:35%}#formEditor{padding:17px}}
@@ -182,7 +186,7 @@ function normalizeForm(saved = {}){
  return {...defaultConfig, ...saved,
   questions:{...baseQuestions,...saved.questions},
   rules:{...defaultConfig.rules,...saved.rules},
-  score:{...defaultConfig.score,...saved.score}};
+  extra:Array.isArray(saved.extra)?saved.extra:[]};
 }
 
 function formLink(id){
@@ -384,7 +388,7 @@ function renderFormEditor(draft){
  '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
-  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow?'checked':'')+'> Brilho suave ao passar o mouse sobre o banner</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
+  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow?'checked':'')+'> Brilho suave em todos os botões clicáveis (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
   '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
@@ -455,7 +459,10 @@ function renderFormList(){
   open.target = '_blank';
   open.rel = 'noopener';
   open.textContent = 'Abrir para preencher';
-  actions.append(edit,open);
+  const remove=document.createElement('button');
+  remove.type='button';remove.className='danger small';remove.textContent='Excluir formulário';
+  remove.onclick=()=>deleteForm(id);
+  actions.append(edit,open,remove);
   row.append(title,actions);
   container.append(row);
  }
@@ -479,8 +486,14 @@ function openFormEditor(id){
  $('editorDescription').textContent = id
   ? 'Ao publicar, o formulário continua no mesmo link.'
   : 'Ao publicar, este formulário ganha um link próprio.';
- renderFormEditor(id ? normalizeForm(forms[id]) : structuredClone(defaultConfig));
- $('formEditor').showModal();
+ try{
+  renderFormEditor(id ? normalizeForm(forms[id]||{}) : structuredClone(defaultConfig));
+  $('formEditor').showModal();
+ }catch(error){
+  console.error('Falha ao abrir editor:',error);
+  $('editorMessage').textContent='Erro ao abrir editor: '+error.message;
+  $('formEditor').showModal();
+ }
 }
 $('editFormButton').onclick = showFormList;
 $('createFormButton').onclick = ()=>openFormEditor();
@@ -658,6 +671,8 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   document.body.style.background=background;page.style.background=background;
   if(config.extendBanner && isBanner(config.cover)){page.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;page.style.backgroundSize='cover';page.style.backgroundPosition='center top';}
   const header = document.querySelector('.form-hero');
+  page.style.setProperty('--form-accent',color);
+  page.classList.toggle('interactive-glow',!!config.bannerGlow);
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
@@ -906,7 +921,7 @@ function showDetails(id){
  ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
  <h3 style="font-size:15px;margin:20px 0 8px">Mensagem para WhatsApp</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">${esc(msg)}</div>
- <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button></div>
+ <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button><button class="danger" onclick="deleteLead('${l.id}')">Excluir lead</button></div>
  </div></div>`;
  populateLeadMessages(l);
 }
@@ -939,6 +954,25 @@ async function setStatus(id,status){
  }catch(e){alert('Não foi possível atualizar o status: '+e.message);}
 }
 
+async function deleteForm(id){
+ if(id==='principal'){alert('O formulário principal não pode ser excluído. Você pode editá-lo.');return;}
+ const title=forms[id]?.title||'este formulário';
+ if(!confirm('Excluir definitivamente "'+title+'"? O link deixará de funcionar. Os leads já recebidos serão preservados.'))return;
+ try{
+  const result=await adminRequest('form_delete',{id});
+  if(result?.updated!==true && result?.deleted!==true)throw new Error('O servidor não confirmou a exclusão. Atualize a função crm_admin_v1 no Supabase para aceitar form_delete.');
+  delete forms[id];updateFormFilter();renderFormList();await loadLeads();
+ }catch(error){alert('Não foi possível excluir o formulário: '+error.message);}
+}
+async function deleteLead(id){
+ const lead=getLeads().find(x=>x.id===id);if(!lead)return;
+ if(!confirm('Excluir definitivamente o lead de '+lead.name+'? Esta ação não pode ser desfeita.'))return;
+ try{
+  const result=await adminRequest('lead_delete',{id});
+  if(result?.updated!==true && result?.deleted!==true)throw new Error('O servidor não confirmou a exclusão. Atualize a função crm_admin_v1 no Supabase para aceitar lead_delete.');
+  closeModal();await loadLeads();
+ }catch(error){alert('Não foi possível excluir o lead: '+error.message);}
+}
 const replyStorage='crm_quick_replies_v2';
 const sortStorage='crm_sort_rules_v2';
 let quickReplies=JSON.parse(localStorage.getItem(replyStorage)||'[]');
