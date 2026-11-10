@@ -169,6 +169,23 @@ const editField = (label, name, value, attributes='', id=name) =>
 const options = (values, selected) => values.map(value =>
  '<option value="'+esc(value)+'"'+(value===selected?' selected':'')+'>'+esc(value)+'</option>').join('');
 
+const percentOperators = {
+ gte:'Maior ou igual a', gt:'Maior que', eq:'Igual a',
+ lt:'Menor que', lte:'Menor ou igual a'
+};
+function matchesEntryPercent(entry, assetValue, operator, percent){
+ if(!Number.isFinite(entry) || !Number.isFinite(assetValue) || assetValue<=0) return false;
+ const actual = Math.round(entry / assetValue * 10000) / 100;
+ switch(operator){
+  case 'gte': return actual >= percent;
+  case 'gt': return actual > percent;
+  case 'eq': return actual === percent;
+  case 'lt': return actual < percent;
+  case 'lte': return actual <= percent;
+  default: return false;
+ }
+}
+
 let extraEditorId = 0;
 function addQuestionEditor(question = {}){
  const id = ++extraEditorId;
@@ -180,18 +197,32 @@ function addQuestionEditor(question = {}){
  editField('Opções separadas por vírgula','extra-options',(question.options ?? []).join(', '), 'maxlength="500"','extra-options-'+id)+
  '<label>Mostrar se <select name="extra-field"><option value="">Sempre</option>'+
  Object.keys(conditionOptions).map(key => '<option value="'+key+'"'+(key===question.field?' selected':'')+'>'+esc(config.questions[key])+'</option>').join('')+
- '</select></label> <label>Resposta <select name="extra-match"></select></label>'+
+ '<option value="entryPercent"'+(question.field==='entryPercent'?' selected':'')+'>Entrada em % do valor do bem</option>'+
+ '</select></label> <label data-answer>Resposta <select name="extra-match"></select></label>'+
+ '<div data-percent hidden><label>Comparação <select name="extra-operator">'+
+ Object.entries(percentOperators).map(([key,label])=>'<option value="'+key+'"'+(key===question.operator?' selected':'')+'>'+label+'</option>').join('')+
+ '</select></label> <label>Percentual (%) <input name="extra-percent" type="number" min="0" step="0.01" value="'+esc(question.percent ?? 50)+'" required></label>'+
+ '<p class="hint">Exemplo com 50%. Para um bem de R$ 100.000, a entrada de R$ 50.000 corresponde a 50%. Sem entrada corresponde a 0%.</p></div>'+
  '<p><label><input type="checkbox" name="extra-required"'+(question.required?' checked':'')+'> Obrigatória</label></p>'+
- '<button class="secondary" type="button">Excluir pergunta</button>';
+ '<button class="danger" type="button">Excluir pergunta</button>';
  const field = block.querySelector('[name="extra-field"]');
  const match = block.querySelector('[name="extra-match"]');
  const update = selected => {
   match.innerHTML = options(conditionOptions[field.value] ?? [], selected);
-  match.disabled = !field.value;
+  const usesPercent = field.value === 'entryPercent';
+  match.disabled = !field.value || usesPercent;
+  block.querySelector('[data-answer]').hidden = match.disabled;
+  block.querySelector('[data-percent]').hidden = !usesPercent;
+  block.querySelector('[name="extra-percent"]').disabled = !usesPercent;
  };
  field.addEventListener('change',()=>update());
  update(question.match);
- block.querySelector('button').addEventListener('click',()=>block.remove());
+ block.querySelector('button').addEventListener('click',()=>{
+  if(confirm('Excluir esta pergunta do rascunho? A mudança entra no ar ao salvar e publicar.')){
+   block.remove();
+   $('editorMessage').textContent = 'Pergunta removida do rascunho.';
+  }
+ });
  $('extraEditors').append(block);
 }
 
@@ -240,7 +271,8 @@ $('formSettings').onsubmit = async event => {
   const get = name => block.querySelector('[name="extra-'+name+'"]');
   return {title:get('title').value.trim(), type:get('type').value,
    options:get('options').value.split(',').map(value=>value.trim()).filter(Boolean),
-   field:get('field').value, match:get('match').value, required:get('required').checked};
+   field:get('field').value, match:get('match').value, required:get('required').checked,
+   ...(get('field').value==='entryPercent' ? {operator:get('operator').value, percent:Number(get('percent').value)} : {})};
  });
  if(extra.some(question=>!question.title || (question.type==='Opções' && !question.options.length))){
   $('editorMessage').textContent = 'Preencha o título e as opções das perguntas adicionais.';
@@ -410,6 +442,13 @@ function setupQuestions(form){
   if(question.id === 'entryWrap') return config.rules.entry === 'Sempre' || form.hasEntry.value === 'Sim';
   if(question.dataset.extra === undefined) return true;
   const rule = config.extra[question.dataset.extra];
+  if(rule.field==='entryPercent'){
+   const input = $('entryValue');
+   const entry = input.dataset.none || (form.hasEntry.value==='Não' && config.rules.entry!=='Sempre')
+    ? 0 : moneyNumber(input.value);
+   if(!form.hasEntry.value || (form.hasEntry.value==='Sim' && !input.dataset.none && !entry)) return false;
+   return matchesEntryPercent(entry,moneyNumber(form.elements.value.value),rule.operator,rule.percent);
+  }
   const answer = rule.field === 'hasEntry' && $('entryValue').dataset.none ? 'Não' : form.elements[rule.field]?.value;
   return !rule.field || answer === rule.match;
  });
