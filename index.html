@@ -94,7 +94,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 <div id="modalRoot"></div>
 <dialog id="formList" class="form-card" aria-labelledby="formListTitle" style="max-height:85vh;overflow:auto">
- <h2 id="formListTitle">Formulários</h2><p class="hint">A exclusão definitiva depende da operação form_delete na função SQL crm_admin_v1 do Supabase.</p>
+ <h2 id="formListTitle">Formulários</h2><p class="hint">Você pode excluir qualquer formulário, inclusive o principal. Os leads já recebidos são preservados.</p>
  <div class="editor-tabs"><button type="button" class="editor-tab active" onclick="switchManagementTab('forms')" id="tabForms">Formulários</button><button type="button" class="editor-tab" onclick="switchManagementTab('messages')" id="tabMessages">Respostas rápidas</button></div><div id="publishedForms"></div><div id="quickRepliesPanel" class="hidden"><p class="muted">Crie mensagens para selecionar no atendimento de cada lead. Use {nome}, {bem}, {valor}, {urgencia} e {interesse} para personalizar.</p><div id="quickRepliesList"></div><button class="secondary" type="button" onclick="editQuickReply()">+ Nova resposta rápida</button></div>
  <div class="actions"><button class="secondary" id="closeFormList" type="button">Fechar</button><button class="primary" id="createFormButton" type="button">Criar formulário</button></div>
 </dialog>
@@ -461,7 +461,7 @@ function renderFormList(){
   open.textContent = 'Abrir para preencher';
   const remove=document.createElement('button');
   remove.type='button';remove.className='danger small';remove.textContent='Excluir formulário';
-  remove.disabled=id==='principal';remove.title=id==='principal'?'Formulário principal protegido':'Excluir formulário';
+  remove.disabled=false;remove.title='Excluir formulário definitivamente';
   remove.onclick=()=>deleteForm(id);
   actions.append(edit,open,remove);
   row.append(title,actions);
@@ -543,7 +543,7 @@ $('formSettings').onsubmit = async event => {
   if(!result.updated) throw new Error('A publicação não foi confirmada.');
   forms[id] = draft;
   updateFormFilter();
-  config = normalizeForm(forms.principal);
+  config = normalizeForm(forms.principal || {});
   $('formEditor').close();
   await loadLeads();
  }catch(error){
@@ -956,7 +956,6 @@ async function setStatus(id,status){
 }
 
 async function deleteForm(id){
- if(id==='principal'){alert('O formulário principal é necessário para a configuração do sistema e não pode ser excluído.');return;}
  const title=forms[id]?.title||'este formulário';
  if(!confirm('Excluir definitivamente "'+title+'"? O link deixará de funcionar. Os leads já recebidos serão preservados.'))return;
  try{
