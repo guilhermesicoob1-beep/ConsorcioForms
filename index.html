@@ -40,7 +40,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 
 /* Brilho nos elementos interativos, respeitando a cor principal */
 .form-page.interactive-glow button,.form-page.interactive-glow .choice,.form-page.interactive-glow a{transition:box-shadow .22s ease,filter .22s ease,transform .22s ease}
-.form-page.interactive-glow button:not(:disabled):hover,.form-page.interactive-glow .choice:hover,.form-page.interactive-glow a:hover{box-shadow:0 0 0 2px var(--form-accent),0 0 19px 3px color-mix(in srgb,var(--form-accent) 48%,transparent);filter:brightness(1.07);transform:translateY(-1px)}
+.form-page.interactive-glow button:not(:disabled):hover,.form-page.interactive-glow .choice:hover,.form-page.interactive-glow a:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--form-accent) 72%,white),0 0 22px 5px color-mix(in srgb,var(--form-accent) 65%,white 35%);filter:brightness(1.07);transform:translateY(-1px)}
 @media(prefers-reduced-motion:reduce){.form-page.interactive-glow button,.form-page.interactive-glow .choice,.form-page.interactive-glow a{transition:none}}
 /* Refined management interface */
 #formEditor{width:min(900px,96vw);max-width:96vw;border:1px solid #dce8e1;border-radius:22px;box-shadow:0 30px 90px #082d2440;padding:30px}
@@ -94,7 +94,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 <div id="modalRoot"></div>
 <dialog id="formList" class="form-card" aria-labelledby="formListTitle" style="max-height:85vh;overflow:auto">
- <h2 id="formListTitle">Formulários</h2>
+ <h2 id="formListTitle">Formulários</h2><p class="hint">A exclusão definitiva depende da operação form_delete na função SQL crm_admin_v1 do Supabase.</p>
  <div class="editor-tabs"><button type="button" class="editor-tab active" onclick="switchManagementTab('forms')" id="tabForms">Formulários</button><button type="button" class="editor-tab" onclick="switchManagementTab('messages')" id="tabMessages">Respostas rápidas</button></div><div id="publishedForms"></div><div id="quickRepliesPanel" class="hidden"><p class="muted">Crie mensagens para selecionar no atendimento de cada lead. Use {nome}, {bem}, {valor}, {urgencia} e {interesse} para personalizar.</p><div id="quickRepliesList"></div><button class="secondary" type="button" onclick="editQuickReply()">+ Nova resposta rápida</button></div>
  <div class="actions"><button class="secondary" id="closeFormList" type="button">Fechar</button><button class="primary" id="createFormButton" type="button">Criar formulário</button></div>
 </dialog>
@@ -158,7 +158,7 @@ const defaultConfig = {
  cover:'', next:'Próxima', back:'Voltar', send:'Enviar formulário',
  questions:baseQuestions, extra:[],
  rules:{other:'Outro', entry:'Sim'},
- backgroundMode:"solid",gradientEnd:"#003641",gradientAngle:135,extendBanner:false,bannerGlow:false
+ backgroundMode:"solid",gradientEnd:"#003641",gradientAngle:135,extendBanner:false,bannerGlow:true
 };
 let config = structuredClone(defaultConfig);
 let configAvailable = false;
@@ -237,10 +237,10 @@ function readOptions(value){
 }
 
 function refreshRoutes(){
- const blocks = [...$('extraEditors').children];
+ const blocks = [...$('extraEditors').children].filter(el=>el.matches('fieldset'));
  blocks.forEach((block,index)=>{
   const field = block.querySelector('[name="extra-field"]');
-  const selected = field.value || block.pendingField || '';
+  const selected = block.pendingField || field.value || ''; 
   delete block.pendingField;
   field.replaceChildren(new Option('Sempre',''));
   if(index>0 || editorLegacy) field.add(new Option('Entrada em % do valor do bem','entryPercent'));
@@ -316,7 +316,7 @@ function addQuestionEditor(question = {}){
   block.querySelector('[name="extra-percent"]').disabled = !usesPercent;
  };
  field.addEventListener('change',block.updateCondition);
- block.querySelector('button').addEventListener('click',()=>{
+ block.querySelector('button.danger').addEventListener('click',()=>{
   if(confirm('Excluir esta pergunta do rascunho? A mudança entra no ar ao salvar e publicar.')){
    block.remove();
    refreshRoutes();
@@ -324,7 +324,7 @@ function addQuestionEditor(question = {}){
   }
  });
  for(const name of ['extra-title','extra-type','extra-options']){
-  block.querySelector('[name="'+name+'"]').addEventListener('change',refreshRoutes);
+  block.querySelector('[name="'+name+'"]').addEventListener('input',refreshRoutes);
  }
  $('extraEditors').append(block);
 }
@@ -388,7 +388,7 @@ function renderFormEditor(draft){
  '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
-  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow?'checked':'')+'> Brilho suave em todos os botões clicáveis (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
+  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow!==false?'checked':'')+'> Brilho nos botões (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
   '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
@@ -426,7 +426,7 @@ function renderFormEditor(draft){
    if(uploader.isConnected) uploader.disabled=remove.disabled=submit.disabled=false;
   }
  };
- draft.extra.forEach(addQuestionEditor);
+ (Array.isArray(draft.extra)?draft.extra:[]).forEach(addQuestionEditor);
  refreshRoutes();
  $('addExtra').onclick = ()=>{
   addQuestionEditor();
@@ -461,6 +461,7 @@ function renderFormList(){
   open.textContent = 'Abrir para preencher';
   const remove=document.createElement('button');
   remove.type='button';remove.className='danger small';remove.textContent='Excluir formulário';
+  remove.disabled=id==='principal';remove.title=id==='principal'?'Formulário principal protegido':'Excluir formulário';
   remove.onclick=()=>deleteForm(id);
   actions.append(edit,open,remove);
   row.append(title,actions);
@@ -511,7 +512,7 @@ $('formSettings').onsubmit = async event => {
  const form = event.currentTarget;
  const button = form.querySelector('[type="submit"]');
  const fields = new FormData(form);
- const extra = Array.from($('extraEditors').children, block=>{
+ const extra = Array.from($('extraEditors').querySelectorAll('fieldset'), block=>{
   const get = name => block.querySelector('[name="extra-'+name+'"]');
   const choices = readOptions(get('options').value);
   const type = get('type').value;
@@ -672,11 +673,11 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   if(config.extendBanner && isBanner(config.cover)){page.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;page.style.backgroundSize='cover';page.style.backgroundPosition='center top';}
   const header = document.querySelector('.form-hero');
   page.style.setProperty('--form-accent',color);
-  page.classList.toggle('interactive-glow',!!config.bannerGlow);
+  page.classList.add('interactive-glow');
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
-   banner.alt='';banner.className='public-banner'+(config.bannerGlow?' glow-banner':'');
+   banner.alt='';banner.className='public-banner'+' glow-banner';
    banner.style.cssText='display:block;width:100%;height:auto;border-radius:16px;margin-bottom:18px';
    header.replaceWith(banner);
   }else header.remove();
@@ -894,7 +895,7 @@ function renderLeads(){
  if(filter!=='all')rows=rows.filter(l=>l.status===filter);
  rows.sort(compareLeads);
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${statusTag(l.status)}</td><td><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -955,14 +956,14 @@ async function setStatus(id,status){
 }
 
 async function deleteForm(id){
- if(id==='principal'){alert('O formulário principal não pode ser excluído. Você pode editá-lo.');return;}
+ if(id==='principal'){alert('O formulário principal é necessário para a configuração do sistema e não pode ser excluído.');return;}
  const title=forms[id]?.title||'este formulário';
  if(!confirm('Excluir definitivamente "'+title+'"? O link deixará de funcionar. Os leads já recebidos serão preservados.'))return;
  try{
   const result=await adminRequest('form_delete',{id});
-  if(result?.updated!==true && result?.deleted!==true)throw new Error('O servidor não confirmou a exclusão. Atualize a função crm_admin_v1 no Supabase para aceitar form_delete.');
+  if(result?.updated!==true && result?.deleted!==true)throw new Error('O servidor não confirmou a exclusão. A função crm_admin_v1 precisa aceitar form_delete.');
   delete forms[id];updateFormFilter();renderFormList();await loadLeads();
- }catch(error){alert('Não foi possível excluir o formulário: '+error.message);}
+ }catch(error){alert('Não foi possível excluir o formulário: '+error.message+(error.message==='Operação inválida.'?'\n\nA função SQL crm_admin_v1 precisa ser atualizada no Supabase.':''));}
 }
 async function deleteLead(id){
  const lead=getLeads().find(x=>x.id===id);if(!lead)return;
