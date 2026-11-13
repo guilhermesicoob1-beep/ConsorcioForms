@@ -56,6 +56,27 @@ body:has(.topbar[style*="none"]) {background:#101810}
 .sorting-panel{margin-bottom:15px}.sort-row{display:flex;align-items:center;gap:8px;margin:9px 0}.sort-row select{min-width:0;flex:1;border:1px solid var(--line);border-radius:9px;padding:10px;background:white}.sort-number{display:grid;place-items:center;min-width:27px;height:27px;background:#e3f5e9;border-radius:50%;font-size:12px;font-weight:800}
 .editor-tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin:18px 0;padding-bottom:10px}.editor-tab{background:#f0f5f1;color:#355547}.editor-tab.active{background:#008b55;color:white}.reply-item{padding:15px;border:1px solid var(--line);border-radius:13px;margin:10px 0}.reply-item p{white-space:pre-wrap}
 @media(max-width:650px){.appearance-options{grid-template-columns:1fr}.sort-row{flex-wrap:wrap}.sort-row select{flex-basis:35%}#formEditor{padding:17px}}
+
+/* Seletor de degradê visual inspirado na experiência de edição do Canva */
+.gradient-studio{grid-column:1/-1;display:grid;gap:13px}.gradient-presets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.gradient-preset{height:52px;border:2px solid #dce6e0;border-radius:12px;cursor:pointer;padding:0;min-width:0;transition:transform .15s,border-color .15s}.gradient-preset:hover{transform:translateY(-2px)}.gradient-preset.selected{border:3px solid #008f7e;box-shadow:0 0 0 2px #fff inset}.gradient-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gradient-color-row{display:flex;align-items:center;gap:10px}.gradient-color-row input[type=color]{width:52px;height:44px;padding:3px;cursor:pointer;border-radius:10px}.gradient-color-row input[type=text]{min-width:0;width:100%;text-transform:uppercase}.gradient-directions{display:flex;flex-wrap:wrap;gap:7px}.gradient-direction{padding:8px 12px;border:1px solid #d4e3dc;background:#fff;border-radius:9px;cursor:pointer}.gradient-direction.selected{background:#e3f6f1;border-color:#008f7e;color:#00574d}.gradient-angle-line{display:flex;gap:10px;align-items:center}.gradient-angle-line input[type=range]{flex:1;min-width:0}.gradient-angle-line input[type=number]{width:80px}.gradient-studio[hidden]{display:none!important}@media(max-width:550px){.gradient-presets{grid-template-columns:repeat(3,1fr)}.gradient-controls{grid-template-columns:1fr}}
+
+/* Tema escuro opcional do painel administrativo */
+body.crm-dark{--bg:#0c171a;--text:#e8f2f0;--muted:#a4b7b3;--line:#2a4143;--white:#142529;--dark:#e8f2f0;--green:#00ae9d;--green2:#28c6b5;--red:#ff8d91;background:var(--bg);color:var(--text);color-scheme:dark}
+body.crm-dark .topbar,body.crm-dark .stat,body.crm-dark .panel,body.crm-dark .form-card:not(.form-page .form-card),body.crm-dark .table-wrap,body.crm-dark .modal,body.crm-dark dialog,body.crm-dark .login-card{background:#142529;color:var(--text);border-color:var(--line)}
+body.crm-dark .topbar strong,body.crm-dark #formEditor h3{color:#55d9c9}
+body.crm-dark .field input,body.crm-dark .field select,body.crm-dark .field textarea,body.crm-dark .search,body.crm-dark .toolbar select,body.crm-dark .sort-row select,body.crm-dark #formEditor fieldset input:not([type=checkbox]),body.crm-dark #formEditor fieldset select,body.crm-dark #formEditor .appearance-options input,body.crm-dark #formEditor .appearance-options select{background:#1b3236;color:#e8f2f0;border-color:#355257}
+body.crm-dark th{background:#1a3033;color:#adc4c0}body.crm-dark td{border-color:#2a4143}
+body.crm-dark .secondary,body.crm-dark .close,body.crm-dark .editor-tab,body.crm-dark .gradient-direction{background:#254147;color:#e4f5f1;border:1px solid #36565a}
+body.crm-dark .secondary:hover,body.crm-dark .editor-tab:hover{background:#305359}
+body.crm-dark .primary,body.crm-dark .editor-tab.active{background:#00ae9d;color:#082e31}
+body.crm-dark .danger{background:#4a292e;color:#ffb4b7}
+body.crm-dark .tag{background:#2b4448;color:#d1e5e1}body.crm-dark .tag.green{background:#164a3b;color:#91f4c3}body.crm-dark .tag.orange{background:#503e20;color:#ffd591}body.crm-dark .tag.red{background:#512a30;color:#ffb2b7}
+body.crm-dark .detail,body.crm-dark .message,body.crm-dark .appearance-options,body.crm-dark #formEditor fieldset,body.crm-dark .reply-item{background:#192f33;color:var(--text);border-color:#355257}
+body.crm-dark #formEditor legend{color:#62dbbd}body.crm-dark .editor-steps span,body.crm-dark .sort-number{background:#21473f;color:#a4f2d4}
+body.crm-dark .editor-tab.active{color:#082e31}body.crm-dark .gradient-direction.selected{background:#17594f;color:#bbfff2}
+body.crm-dark .choice:not(.form-page .choice){background:#213a3e;color:#e8f2f0}
+body.crm-dark .muted,body.crm-dark .hint,body.crm-dark .stat span{color:var(--muted)}
+#themeToggle{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -73,7 +94,7 @@ body:has(.topbar[style*="none"]) {background:#101810}
 </section>
 
 <section id="appView">
- <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
+ <header class="topbar"><strong>CRM CONSÓRCIO</strong><div class="actions"><button class="secondary small" id="themeToggle" type="button" aria-pressed="false">☾ Tema escuro</button><button class="secondary small" id="settingsButton" type="button">Alterar acesso</button><button class="secondary small" onclick="logout()">Sair</button></div></header>
  <main class="wrap">
   <div id="dashboard">
    <div class="heading"><div><h1>Painel administrativo</h1><div class="muted">Acompanhe e gerencie seus contatos.</div></div><div class="actions"><button class="primary" id="editFormButton" type="button">Formulários</button></div></div>
@@ -118,6 +139,25 @@ body:has(.topbar[style*="none"]) {background:#101810}
  </form>
 </dialog>
 <script>
+
+// Preferência de tema exclusiva deste navegador; não altera o visual dos formulários públicos.
+(function(){
+ const storageKey='crm_admin_dark_theme';
+ function applyDarkTheme(on){
+  document.body.classList.toggle('crm-dark',on);
+  const btn=document.getElementById('themeToggle');
+  if(btn){btn.textContent=on?'☀ Tema claro':'☾ Tema escuro';btn.setAttribute('aria-pressed',String(on));}
+ }
+ let dark=false;
+ try{dark=localStorage.getItem(storageKey)==='dark';}catch(e){}
+ applyDarkTheme(dark);
+ document.getElementById('themeToggle').addEventListener('click',function(){
+  dark=!document.body.classList.contains('crm-dark');
+  applyDarkTheme(dark);
+  try{localStorage.setItem(storageKey,dark?'dark':'light');}catch(e){}
+ });
+})();
+
 const $=id=>document.getElementById(id);
 // Supabase: chave publishable. A chave secreta/service_role nunca deve ficar neste arquivo.
 const SUPABASE_URL = 'https://yogkvjpzbagpzwseirfw.supabase.co'; // URL do projeto configurada
@@ -391,7 +431,7 @@ function renderFormEditor(draft){
  '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
-  '<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="field"><label>Segunda cor do degradê</label><input type="color" name="gradientEnd" id="gradientEnd" value="'+esc(draft.gradientEnd||'#003641')+'"></div><div class="field"><label>Ângulo do degradê (graus)</label><input type="number" name="gradientAngle" min="0" max="360" value="'+esc(draft.gradientAngle??135)+'"></div><label class="toggle-row"><input type="checkbox" name="extendBanner" '+(draft.extendBanner?'checked':'')+'> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" '+(draft.bannerGlow!==false?'checked':'')+'> Brilho nos botões (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia das cores do fundo</div>'+ 
+  `<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="gradient-studio" id="gradientStudio" hidden><label>Escolha um degradê</label><div class="gradient-presets" id="gradientPresets"></div><div class="gradient-controls"><div class="field"><label>Cor inicial</label><div class="gradient-color-row"><input type="color" id="gradientStartPicker" aria-label="Selecionar cor inicial"><input type="text" id="gradientStartHex" maxlength="7" aria-label="HEX da cor inicial"></div></div><div class="field"><label>Cor final</label><div class="gradient-color-row"><input type="color" name="gradientEnd" id="gradientEnd" value="${esc(draft.gradientEnd||'#003641')}"><input type="text" id="gradientEndHex" maxlength="7" aria-label="HEX da cor final"></div></div></div><label>Direção do degradê</label><div class="gradient-directions" id="gradientDirections"></div><div class="gradient-angle-line"><input type="range" id="gradientAngleSlider" min="0" max="360" step="1" aria-label="Ângulo do degradê"><input type="number" name="gradientAngle" id="gradientAngle" min="0" max="360" value="${esc(draft.gradientAngle??135)}" aria-label="Ângulo em graus"><span>graus</span></div></div><label class="toggle-row"><input type="checkbox" name="extendBanner" ${draft.extendBanner?'checked':''}> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" ${draft.bannerGlow!==false?'checked':''}> Brilho nos botões (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia do fundo</div>`+
   '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
@@ -400,13 +440,34 @@ function renderFormEditor(draft){
  '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
  '';
  const picker=$('edit-background'), hex=$('backgroundHex');
- picker.oninput=()=>{hex.value=picker.value.toUpperCase();};
- hex.oninput=()=>{
-  if(/^#?[0-9a-f]{6}$/i.test(hex.value)) picker.value='#'+hex.value.replace('#','');
+ const endPicker=$('gradientEnd'),endHex=$('gradientEndHex');
+ const startPicker=$('gradientStartPicker'),startHex=$('gradientStartHex');
+ const angle=$('gradientAngle'),angleSlider=$('gradientAngleSlider');
+ const mode=$('backgroundMode'),studio=$('gradientStudio');
+ const presets=[['#00AE9D','#003641'],['#003641','#008E7F'],['#142B32','#00AE9D'],['#0B1D23','#305E65'],['#F1FBF8','#00AE9D'],['#003641','#8FDACB']];
+ const validHex=value=>/^#[0-9a-f]{6}$/i.test(value)?value.toUpperCase():null;
+ const previewAppearance=()=>{
+  const isGradient=mode.value==='gradient';studio.hidden=!isGradient;
+  $('appearancePreview').style.background=isGradient?`linear-gradient(${angle.value}deg, ${picker.value}, ${endPicker.value})`:picker.value;
+  document.querySelectorAll('#gradientPresets button').forEach((btn,i)=>btn.classList.toggle('selected',presets[i][0].toLowerCase()===picker.value.toLowerCase()&&presets[i][1].toLowerCase()===endPicker.value.toLowerCase()));
+  document.querySelectorAll('#gradientDirections button').forEach(btn=>btn.classList.toggle('selected',Number(btn.dataset.angle)===Number(angle.value)));
  };
-  $('backgroundMode').value=draft.backgroundMode||'solid';
-  const previewAppearance=()=>{const a=$('appearancePreview');if(a)a.style.background=$('backgroundMode').value==='gradient'?`linear-gradient(${editor.querySelector('[name=gradientAngle]').value}deg, ${picker.value}, ${$('gradientEnd').value})`:picker.value;};
-  editor.querySelectorAll('[name=backgroundMode],[name=gradientEnd],[name=gradientAngle],#edit-background,#backgroundHex').forEach(el=>el.addEventListener('input',previewAppearance));previewAppearance();
+ const syncColors=()=>{hex.value=picker.value.toUpperCase();startPicker.value=picker.value;startHex.value=hex.value;endHex.value=endPicker.value.toUpperCase();previewAppearance();};
+ picker.addEventListener('input',syncColors);
+ startPicker.addEventListener('input',()=>{picker.value=startPicker.value;syncColors();});
+ endPicker.addEventListener('input',syncColors);
+ [hex,startHex].forEach(field=>field.addEventListener('input',()=>{const v=validHex(field.value.startsWith('#')?field.value:'#'+field.value);if(v){picker.value=v;syncColors();}}));
+ endHex.addEventListener('input',()=>{const v=validHex(endHex.value.startsWith('#')?endHex.value:'#'+endHex.value);if(v){endPicker.value=v;syncColors();}});
+ mode.value=draft.backgroundMode||'solid';
+ angleSlider.value=angle.value;
+ angle.addEventListener('input',()=>{angle.value=Math.max(0,Math.min(360,Number(angle.value)||0));angleSlider.value=angle.value;previewAppearance();});
+ angleSlider.addEventListener('input',()=>{angle.value=angleSlider.value;previewAppearance();});
+ mode.addEventListener('change',previewAppearance);
+ $('gradientPresets').innerHTML=presets.map(([a,b],i)=>`<button type="button" class="gradient-preset" data-preset="${i}" style="background:linear-gradient(135deg,${a},${b})" aria-label="Degradê ${i+1}"></button>`).join('');
+ $('gradientPresets').addEventListener('click',event=>{const btn=event.target.closest('[data-preset]');if(!btn)return;const [a,b]=presets[Number(btn.dataset.preset)];picker.value=a;endPicker.value=b;mode.value='gradient';syncColors();});
+ $('gradientDirections').innerHTML=[[0,'↑'],[45,'↗'],[90,'→'],[135,'↘'],[180,'↓'],[225,'↙'],[270,'←'],[315,'↖']].map(([a,s])=>`<button type="button" class="gradient-direction" data-angle="${a}" aria-label="Ângulo ${a} graus">${s}</button>`).join('');
+ $('gradientDirections').addEventListener('click',event=>{const btn=event.target.closest('[data-angle]');if(!btn)return;angle.value=btn.dataset.angle;angleSlider.value=angle.value;previewAppearance();});
+ syncColors();
   updateBannerPreview();
  const uploader=$('bannerUpload'), remove=$('removeBanner');
  const submit=$('formSettings').querySelector('[type="submit"]');
@@ -903,28 +964,15 @@ function renderLeads(){
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function statusTag(s){return s==='closed'?'<span class="tag red">Fechado</span>':s==='responded'?'<span class="tag orange">Em atendimento</span>':'<span class="tag">Novo</span>';}
-function makeMessage(l){
- if(!l.asset) return 'Olá! Recebemos sua resposta ao formulário e gostaríamos de conversar com você. Como podemos ajudar?';
- const first=l.name.split(' ')[0],ratio=l.value?l.entry/l.value:0;
- let body;
- if(l.urgency==='Urgente'&&l.hasEntry==='Sim'&&ratio<.5){
- body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio. Pelo prazo em que você precisa adquirir o bem e considerando o valor de entrada informado, talvez o financiamento seja uma alternativa mais adequada. Você gostaria de receber uma proposta de consórcio ou prefere conhecer uma opção de financiamento?`;
- }else if(l.urgency==='Urgente'&&l.hasEntry==='Sim'&&ratio>=.6){
- body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio. Com o valor de entrada que você possui, pode existir a possibilidade de ofertar um lance e antecipar uma eventual contemplação. É importante lembrar que não há garantia de contemplação, pois ela depende das regras e dos resultados do grupo. Gostaria de receber uma proposta de consórcio ou conhecer uma opção de financiamento?`;
- }else{
- body=`Olá, ${first}! Tudo bem? Vi que você demonstrou interesse em um de nossos anúncios de consórcio e estou entrando em contato para entender melhor o que você procura. Você deseja receber uma simulação e conhecer as opções disponíveis para ${l.asset.toLowerCase()}? Posso te ajudar!`;
- }
- return body;
-}
 function showDetails(id){
  const l=getLeads().find(x=>x.id===id);if(!l)return;
- const phone='55'+l.ddd+l.phone.replace(/\D/g,'');const msg=makeMessage(l);const wa='https://wa.me/'+phone+'?text='+encodeURIComponent(msg);
+ const msg='';
  $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><h2>${esc(l.name)}</h2><span class="muted">Lead recebido em ${new Date(l.created).toLocaleString('pt-BR')}</span></div><button class="close" onclick="closeModal()">✕</button></div>
  <p>${statusTag(l.status)}</p>
  <div class="detail-grid">
  ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
- <h3 style="font-size:15px;margin:20px 0 8px">Mensagem para WhatsApp</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">${esc(msg)}</div>
+ <h3 style="font-size:15px;margin:20px 0 8px">Respostas rápidas</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">Selecione uma resposta rápida para visualizar a mensagem.</div>
  <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button><button class="danger" onclick="deleteLead('${l.id}')">Excluir lead</button></div>
  </div></div>`;
  populateLeadMessages(l);
@@ -934,7 +982,8 @@ function closeModal(){$('modalRoot').innerHTML='';}
 async function openWhatsApp(id){
  const lead=getLeads().find(item=>item.id===id);
  if(!lead?.phone) return;
- const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(selectedMessage(lead));
+ const message=selectedMessage(lead);
+ const url='https://wa.me/55'+lead.ddd+lead.phone.replace(/\D/g,'')+(message?'?text='+encodeURIComponent(message):'');
  const tab = window.open('about:blank','_blank');
  if(!tab){alert('Permita a abertura de novas janelas para acessar o WhatsApp.');return;}
  tab.opener = null;
@@ -992,9 +1041,9 @@ function editQuickReply(i=-1){const r=quickReplies[i]||{title:'',body:''};$('mod
 function saveQuickReply(i){const title=$('replyTitle').value.trim(),body=$('replyBody').value.trim();if(!title||!body){alert('Preencha o nome e a mensagem.');return;}if(i<0)quickReplies.push({title,body});else quickReplies[i]={title,body};localStorage.setItem(replyStorage,JSON.stringify(quickReplies));closeModal();renderQuickReplies();}
 function deleteQuickReply(i){if(!confirm('Excluir esta resposta rápida?'))return;quickReplies.splice(i,1);localStorage.setItem(replyStorage,JSON.stringify(quickReplies));renderQuickReplies();}
 function formatReply(body,l){return body.replace(/\{(nome|bem|valor|urgencia|interesse)\}/gi,(_,key)=>({nome:l.name.split(' ')[0],bem:l.asset||'',valor:money(l.value),urgencia:l.urgency||'',interesse:l.intent||''})[key.toLowerCase()]);}
-function populateLeadMessages(l){const sel=$('leadMessageTemplate');if(!sel)return;sel.innerHTML='<option value="default">Mensagem sugerida</option>'+quickReplies.map((r,i)=>`<option value="${i}">${esc(r.title)}</option>`).join('');}
-function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.value;if(index!==undefined&&index!=='default'&&quickReplies[Number(index)])return formatReply(quickReplies[Number(index)].body,l);return makeMessage(l);}
-function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l);}
+function populateLeadMessages(l){const sel=$('leadMessageTemplate');if(!sel)return;sel.innerHTML='<option value="">Selecione uma resposta rápida (opcional)</option>'+quickReplies.map((r,i)=>`<option value="${i}">${esc(r.title)}</option>`).join('');}
+function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.value;if(index!==undefined&&index!==''&&quickReplies[Number(index)])return formatReply(quickReplies[Number(index)].body,l);return '';}
+function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l)||'Nenhuma resposta rápida selecionada. O WhatsApp abrirá sem mensagem preenchida.';}
 renderSortRules();
 
 setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
