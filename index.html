@@ -140,6 +140,73 @@ body.crm-dark .topbar{box-shadow:none}
 .form-page .field{margin:14px 0}.form-page .field>label,.form-page .field strong{color:#f3fffd!important;font-weight:600}.form-page .field input:not([type=radio]):not([type=checkbox]),.form-page .field select,.form-page .field textarea{background:#ffffff12!important;color:#fff!important;border:1px solid #ffffff38!important;border-radius:14px!important;min-height:48px}.form-page .field input::placeholder{color:#d4e6e0a8}.form-page .choice{background:#ffffff0e!important;color:#f3fffd!important;border:1px solid #ffffff32!important;border-radius:13px!important}.form-page .choice:has(input:checked){background:color-mix(in srgb,var(--form-accent) 28%,#103034)!important;border-color:var(--form-accent)!important}.form-page .hint,.form-page .footer-note{color:#d6e8e1!important}.form-page .primary{background:var(--button-color)!important;color:var(--button-text,#fff)!important}.form-page .secondary{background:transparent!important;color:#fff!important;border-color:#ffffff66!important}.form-page .section{border-color:#ffffff20}
 @media(max-width:600px){.form-page{margin:0 auto!important}.form-page .form-card{padding:22px 18px!important}.form-page .public-banner{margin-bottom:18px!important}}
 @media(prefers-reduced-motion:reduce){.form-page .form-card::before,.form-page .form-card::after{animation:none}}
+
+/* V17: cores públicas 100% definidas no editor; preenchimento integral da viewport */
+html:has(body.public-form-active){min-height:100%;background:var(--public-background,#003641)}
+body.public-form-active{min-height:100vh;min-height:100dvh;background:var(--public-background,#003641)!important;background-attachment:fixed!important;color:var(--form-text,#fff)}
+body.public-form-active #appView{min-height:100vh;min-height:100dvh;background:transparent!important}
+body.public-form-active #appView>.topbar{display:none!important}
+body.public-form-active #appView>.wrap{max-width:none!important;width:100%;min-height:100vh;min-height:100dvh;margin:0!important;padding:clamp(16px,4vw,48px) 14px 44px!important;display:flex;align-items:flex-start;justify-content:center;background:transparent!important}
+body.public-form-active #formPage{width:100%;max-width:760px;background:transparent!important}
+body.public-form-active .form-page{width:100%;max-width:720px!important;margin:0 auto!important;padding:0 10px 24px!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+body.public-form-active .form-page .public-banner{width:100%;height:auto;max-height:none;object-fit:contain;display:block;margin:0 auto 24px!important;border-radius:18px;box-shadow:none}
+body.public-form-active .form-page .form-card{background:var(--form-panel-bg,var(--form-bg,#003641))!important;color:var(--form-text,#fff)!important;border:1px solid var(--form-outline,#00AE9D)!important;box-shadow:0 16px 48px #0002,inset 0 1px #ffffff14!important}
+body.public-form-active .form-page .form-card::before{z-index:-1;opacity:1}
+body.public-form-active .form-page .form-card::after{z-index:-2;opacity:.9;filter:blur(13px)}
+body.public-form-active .form-page .field>label,body.public-form-active .form-page .field strong,body.public-form-active .form-page .field p{color:var(--form-text,#fff)!important}
+body.public-form-active .form-page .field input:not([type=radio]):not([type=checkbox]),body.public-form-active .form-page .field select,body.public-form-active .form-page .field textarea{background:var(--form-input-bg,#ffffff16)!important;color:var(--form-text,#fff)!important;border-color:var(--form-input-border,#ffffff44)!important}
+body.public-form-active .form-page .field input::placeholder{color:var(--form-muted,#c7d9d4)!important;opacity:.9}
+body.public-form-active .form-page .choice{background:var(--form-choice-bg,#ffffff12)!important;color:var(--form-text,#fff)!important;border-color:var(--form-input-border,#ffffff44)!important}
+body.public-form-active .form-page .choice:has(input:checked){background:var(--form-choice-selected,#00AE9D44)!important;border-color:var(--form-accent,#00AE9D)!important}
+body.public-form-active .form-page .hint,body.public-form-active .form-page .footer-note{color:var(--form-muted,#c7d9d4)!important}
+body.public-form-active .form-page .secondary{color:var(--form-text,#fff)!important;border-color:var(--form-input-border,#ffffff44)!important}
+body.public-form-active .form-page .primary{background:var(--button-color,#00AE9D)!important;color:var(--button-text,#fff)!important}
+body.public-form-active .form-page .primary:hover{background:var(--button-color,#00AE9D)!important;filter:brightness(1.08)}
+body.public-form-active .form-page .section{border-color:var(--form-input-border,#ffffff44)!important}
+body.public-form-active .form-page .choice input{accent-color:var(--form-accent,#00AE9D)}
+@media(max-width:600px){body.public-form-active #appView>.wrap{padding:14px 10px 28px!important}body.public-form-active .form-page{padding:0 5px 20px!important}body.public-form-active .form-page .form-card{padding:23px 17px!important;border-radius:23px!important}body.public-form-active .form-page .public-banner{margin-bottom:20px!important}}
+/* Configuração dos campos de CRM no painel */
+.crm-fields-panel{margin:24px 0 26px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--bg);}
+.crm-fields-panel h3{margin:0 0 7px;font-size:18px;letter-spacing:-.025em}
+.crm-fields-panel .hint{line-height:1.6;margin:0 0 17px}
+.crm-fields-panel #crmColumnsEditor{display:grid;gap:9px}
+.crm-fields-panel .crm-column-row{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin:0}
+.crm-fields-panel .crm-column-row::before{content:'≡';font-size:20px;color:var(--muted);line-height:1}
+.crm-fields-panel .crm-column-row input{border:0;box-shadow:none!important;background:transparent;padding:9px 5px;font-weight:600;color:var(--text)}
+.crm-fields-panel .crm-column-row input:focus{outline:2px solid var(--green2);outline-offset:1px;border-radius:6px}
+.crm-fields-panel .crm-column-row button{border:1px solid var(--line);background:transparent;color:var(--muted)}
+.crm-fields-panel #addCrmColumn{width:100%;border:1px dashed var(--green2);background:transparent;color:var(--green);margin-top:12px}
+body.crm-dark .crm-fields-panel{background:#102326;border-color:#355257}
+body.crm-dark .crm-fields-panel .crm-column-row{background:#1a3437;border-color:#355257}
+body.crm-dark .crm-fields-panel .crm-column-row input{color:#e5f7f2}
+body.crm-dark .crm-fields-panel #addCrmColumn{color:#6ce3d2}
+@media(max-width:480px){.crm-fields-panel{padding:14px}.crm-fields-panel .crm-column-row{flex-wrap:wrap}.crm-fields-panel .crm-column-row input{flex:1 1 70%}.crm-fields-panel .crm-column-row button{margin-left:auto}}
+
+
+/* V18 — Organização dos filtros, mantendo a paleta original do CRM */
+.crm-fields-panel{padding:24px!important;border-radius:19px!important;background:var(--white)!important}
+.crm-fields-panel .crm-fields-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+.crm-fields-panel .crm-fields-head h3{margin:0 0 8px!important;border:0!important;padding:0!important;color:var(--text)!important}
+.crm-fields-panel .crm-fields-head .hint{margin:0!important}
+.crm-fields-panel .crm-column-row{padding:11px 13px!important;gap:10px!important;flex-wrap:nowrap!important}
+.crm-fields-panel .crm-column-row::before{content:none!important}
+.crm-fields-panel .crm-drag{color:var(--muted);font-size:19px;letter-spacing:-4px;flex:0 0 19px;text-align:center;user-select:none}
+.crm-fields-panel .crm-column-name{flex:1 1 140px;min-width:80px!important;font-size:14px}
+.crm-fields-panel .crm-enabled-label{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px;font-weight:600;color:var(--text)}
+.crm-fields-panel .crm-enabled-label input{appearance:none;width:35px;height:20px;border-radius:15px;border:1px solid var(--line);background:#b7c6c2;position:relative;cursor:pointer;flex-shrink:0}
+.crm-fields-panel .crm-enabled-label input::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .18s}
+.crm-fields-panel .crm-enabled-label input:checked{background:var(--green2);border-color:var(--green2)}
+.crm-fields-panel .crm-enabled-label input:checked::after{transform:translateX(15px)}
+.crm-fields-panel .crm-row-actions{display:flex;gap:5px;border-left:1px solid var(--line);padding-left:9px}
+.crm-fields-panel .crm-row-actions button{min-width:29px;min-height:30px;padding:3px 6px!important;border-radius:7px;font-size:15px}
+.crm-fields-panel .crm-column-row[data-enabled="false"] .crm-column-name{opacity:.65}
+.crm-fields-panel #addCrmColumn{min-height:49px;border-radius:11px;margin-top:16px!important;font-weight:700}
+.crm-fields-panel .crm-fields-note{margin:16px 0 0;padding:13px 15px;border-radius:11px;background:var(--bg);font-size:12px;color:var(--muted);line-height:1.5}
+body.crm-dark .crm-fields-panel{background:#192f33!important;border-color:#355257}
+body.crm-dark .crm-fields-panel .crm-fields-head h3{color:#e8f2f0!important}
+body.crm-dark .crm-fields-panel .crm-fields-note{background:#102326}
+@media(max-width:620px){.crm-fields-panel{padding:15px!important}.crm-fields-panel .crm-column-row{flex-wrap:wrap!important}.crm-fields-panel .crm-column-name{flex:1 1 calc(100% - 45px)}.crm-fields-panel .crm-enabled-label{margin-left:24px}.crm-fields-panel .crm-row-actions{margin-left:auto}.crm-fields-panel .crm-fields-head{display:block}}
+
 </style>
 </head>
 <body>
@@ -283,16 +350,16 @@ function crmColumns(form){
 }
 function allCrmColumns(){
  const byKey=new Map();
- for(const form of Object.values(forms))for(const col of crmColumns(form))if(!byKey.has(col.key))byKey.set(col.key,col);
+ for(const form of Object.values(forms))for(const col of crmColumns(form))if(col.enabled!==false&&!byKey.has(col.key))byKey.set(col.key,col);
  return [...byKey.values()];
 }
 function crmRoleOptions(){
  const fields={...crmFields};
  const current=forms[editingFormId]||{};
- for(const col of crmColumns(current))fields[col.key]=col.label;
+ for(const col of crmColumns(current))if(col.enabled!==false)fields[col.key]=col.label;
  for(const row of document.querySelectorAll('#crmColumnsEditor [data-crm-column]')){
   const key=row.dataset.key,label=row.querySelector('[data-column-label]')?.value.trim();
-  if(key&&label)fields[key]=label;
+  if(key&&label&&row.dataset.enabled!=='false')fields[key]=label;
  }
  return fields;
 }
@@ -307,10 +374,15 @@ function refreshCrmRoleOptions(){
 function addCrmColumnEditor(col={}){
  const key=col.key||'custom_'+crypto.randomUUID().replace(/-/g,'').slice(0,12);
  const row=document.createElement('div');row.dataset.crmColumn='';row.dataset.key=key;
+ row.dataset.enabled=col.enabled===false?'false':'true';
  row.className='crm-column-row';
- row.innerHTML=`<input data-column-label maxlength="70" placeholder="Nome da coluna no CRM" value="${esc(col.label||'')}"><button type="button" class="secondary small" data-remove-column>Remover</button>`;
+ row.innerHTML=`<span class="crm-drag" aria-hidden="true">⠿</span><input class="crm-column-name" data-column-label maxlength="70" aria-label="Nome do campo do CRM" placeholder="Nome do campo" value="${esc(col.label||'')}"><label class="crm-enabled-label"><input type="checkbox" data-column-enabled ${col.enabled===false?'':'checked'}> Usar no CRM</label><div class="crm-row-actions"><button type="button" data-move-up title="Mover para cima" aria-label="Mover para cima">↑</button><button type="button" data-move-down title="Mover para baixo" aria-label="Mover para baixo">↓</button><button type="button" data-edit-column title="Editar nome" aria-label="Editar nome">✎</button><button type="button" data-remove-column title="Excluir campo" aria-label="Excluir campo">×</button></div>`;
  row.querySelector('[data-column-label]').addEventListener('input',refreshCrmRoleOptions);
- row.querySelector('[data-remove-column]').onclick=()=>{row.remove();refreshCrmRoleOptions();};
+ row.querySelector('[data-column-enabled]').addEventListener('change',event=>{row.dataset.enabled=event.target.checked?'true':'false';refreshCrmRoleOptions();});
+ row.querySelector('[data-edit-column]').onclick=()=>{const input=row.querySelector('[data-column-label]');input.focus();input.select();};
+ row.querySelector('[data-move-up]').onclick=()=>{const previous=row.previousElementSibling;if(previous){previous.before(row);refreshCrmRoleOptions();}};
+ row.querySelector('[data-move-down]').onclick=()=>{const next=row.nextElementSibling;if(next){next.after(row);refreshCrmRoleOptions();}};
+ row.querySelector('[data-remove-column]').onclick=()=>{if(confirm('Excluir este campo da configuração do CRM? As respostas já recebidas serão preservadas.')){row.remove();refreshCrmRoleOptions();}};
  $('crmColumnsEditor').append(row);refreshCrmRoleOptions();
 }
 function getLeadColumnValue(lead,col){
@@ -571,7 +643,7 @@ function renderFormEditor(draft){
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
   `<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="gradient-studio" id="gradientStudio" hidden><label>Escolha um degradê</label><div class="gradient-presets" id="gradientPresets"></div><div class="gradient-controls"><div class="field"><label>Cor inicial</label><div class="gradient-color-row"><input type="color" id="gradientStartPicker" aria-label="Selecionar cor inicial"><input type="text" id="gradientStartHex" maxlength="7" aria-label="HEX da cor inicial"></div></div><div class="field"><label>Cor final</label><div class="gradient-color-row"><input type="color" name="gradientEnd" id="gradientEnd" value="${esc(draft.gradientEnd||'#003641')}"><input type="text" id="gradientEndHex" maxlength="7" aria-label="HEX da cor final"></div></div></div><label>Direção do degradê</label><div class="gradient-directions" id="gradientDirections"></div><div class="gradient-angle-line"><input type="range" id="gradientAngleSlider" min="0" max="360" step="1" aria-label="Ângulo do degradê"><input type="number" name="gradientAngle" id="gradientAngle" min="0" max="360" value="${esc(draft.gradientAngle??135)}" aria-label="Ângulo em graus"><span>graus</span></div></div><label class="toggle-row"><input type="checkbox" name="extendBanner" ${draft.extendBanner?'checked':''}> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" ${draft.bannerGlow!==false?'checked':''}> Brilho nos botões (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia do fundo</div>`+
-  '<h3>Campos e filtros do CRM</h3><p class="hint">Renomeie as colunas, remova as que não deseja exibir ou adicione novas. Cada campo aparece automaticamente em <b>Usar no CRM</b> e na tabela de leads.</p><div id="crmColumnsEditor"></div><p><button type="button" class="secondary" id="addCrmColumn">+ Adicionar campo ao CRM</button></p>'+
+  '<section class="crm-fields-panel"><div class="crm-fields-head"><div><h3>Campos e filtros do CRM</h3><p class="hint">Defina quais respostas aparecerão no CRM e na planilha de leads.</p></div></div><div id="crmColumnsEditor"></div><button type="button" class="secondary" id="addCrmColumn">＋ Adicionar campo ao CRM</button><p class="crm-fields-note">Os campos ativados ficam disponíveis em <b>Usar no CRM</b> e aparecem na tabela de leads. Use ↑ e ↓ para ordenar.</p></section>'+
   '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
@@ -748,7 +820,7 @@ $('formSettings').onsubmit = async event => {
  }
 
  draft.extra = extra;
- draft.crmColumns=Array.from($('crmColumnsEditor').querySelectorAll('[data-crm-column]')).map(row=>({key:row.dataset.key,label:row.querySelector('[data-column-label]').value.trim()})).filter(c=>c.label);
+ draft.crmColumns=Array.from($('crmColumnsEditor').querySelectorAll('[data-crm-column]')).map(row=>({key:row.dataset.key,label:row.querySelector('[data-column-label]').value.trim(),enabled:row.querySelector('[data-column-enabled]').checked})).filter(c=>c.label);
  button.disabled = true;
  try{
   const id = editingFormId;
@@ -842,7 +914,7 @@ async function logout(){
  signedIn=false;leadsCache=[];$('appView').style.display='none';$('loginView').style.display='grid';
  }catch(err){alert(err.message);}
 }
-function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
+function showDashboard(){document.body.classList.remove('public-form-active');document.body.style.removeProperty('background');document.body.style.removeProperty('background-image');document.documentElement.style.removeProperty('background');activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
 if(publicFormId !== null){
  $('loginView').style.display='none';
  $('appView').style.display='block';
@@ -881,18 +953,44 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
  const form = $('leadForm');
  if(config.custom) form.querySelectorAll('.section').forEach(section=>section.remove());
- if(config.custom || config.imageHeader){
+ {
+  document.body.classList.add('public-form-active');
   const page = document.querySelector('.form-page');
   const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#003641';
   page.style.setProperty('--form-bg',color);
-  const background=config.backgroundMode==='gradient'?`linear-gradient(${Number(config.gradientAngle)||135}deg,${color},${/^#[0-9a-f]{6}$/i.test(config.gradientEnd)?config.gradientEnd:'#003641'})`:color;
-  document.body.style.background=background;page.style.background="transparent";
-  if(config.extendBanner && isBanner(config.cover)){document.body.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center top';}
+  const endColor=/^#[0-9a-f]{6}$/i.test(config.gradientEnd)?config.gradientEnd:color;
+  const angle=Number.isFinite(Number(config.gradientAngle))?Number(config.gradientAngle):135;
+  const background=config.backgroundMode==='gradient'?`linear-gradient(${angle}deg,${color},${endColor})`:color;
+  document.body.style.setProperty('--public-background',background);
+  document.documentElement.style.background=background;
+  document.body.style.background=background;
+  document.body.style.backgroundSize='cover';document.body.style.backgroundRepeat='no-repeat';
+  page.style.background='transparent';
+  if(config.extendBanner && isBanner(config.cover)){
+   document.body.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;
+   document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center top';
+  }
+  // Contraste automático: também funciona com fundos claros escolhidos no editor.
+  const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+  const light=hex=>{const [r,g,b]=rgb(hex);return (r*299+g*587+b*114)/1000>155;};
+  const panelColor=config.backgroundMode==='gradient'?`linear-gradient(${angle}deg,${color},${endColor})`:color;
+  const isLight=light(color)&&(config.backgroundMode!=='gradient'||light(endColor));
+  const textColor=isLight?'#152c2c':'#f6fffd';
+  const softText=isLight?'#3c5554':'#d0e9e6';
+  const tint=isLight?'#000000':'#ffffff';
+  page.style.setProperty('--form-panel-bg',panelColor);
+  page.style.setProperty('--form-text',textColor);
+  page.style.setProperty('--form-muted',softText);
+  page.style.setProperty('--form-input-bg',isLight?'#0000000b':'#ffffff16');
+  page.style.setProperty('--form-choice-bg',isLight?'#00000008':'#ffffff12');
+  page.style.setProperty('--form-input-border',isLight?'#00000035':'#ffffff44');
   const header = document.querySelector('.form-hero');
   page.style.setProperty('--form-accent',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
   page.style.setProperty('--button-color',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
+  page.style.setProperty('--form-outline',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
+  page.style.setProperty('--form-choice-selected',`color-mix(in srgb,${/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D'} 26%,transparent)`);
   page.classList.add('interactive-glow');
-  page.style.setProperty('--button-text', '#ffffff');
+  page.style.setProperty('--button-text',light(/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D')?'#092421':'#ffffff');
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
