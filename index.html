@@ -60,6 +60,13 @@ body:has(.topbar[style*="none"]) {background:#101810}
 /* Seletor de degradê visual inspirado na experiência de edição do Canva */
 .gradient-studio{grid-column:1/-1;display:grid;gap:13px}.gradient-presets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}.gradient-preset{height:52px;border:2px solid #dce6e0;border-radius:12px;cursor:pointer;padding:0;min-width:0;transition:transform .15s,border-color .15s}.gradient-preset:hover{transform:translateY(-2px)}.gradient-preset.selected{border:3px solid #008f7e;box-shadow:0 0 0 2px #fff inset}.gradient-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gradient-color-row{display:flex;align-items:center;gap:10px}.gradient-color-row input[type=color]{width:52px;height:44px;padding:3px;cursor:pointer;border-radius:10px}.gradient-color-row input[type=text]{min-width:0;width:100%;text-transform:uppercase}.gradient-directions{display:flex;flex-wrap:wrap;gap:7px}.gradient-direction{padding:8px 12px;border:1px solid #d4e3dc;background:#fff;border-radius:9px;cursor:pointer}.gradient-direction.selected{background:#e3f6f1;border-color:#008f7e;color:#00574d}.gradient-angle-line{display:flex;gap:10px;align-items:center}.gradient-angle-line input[type=range]{flex:1;min-width:0}.gradient-angle-line input[type=number]{width:80px}.gradient-studio[hidden]{display:none!important}@media(max-width:550px){.gradient-presets{grid-template-columns:repeat(3,1fr)}.gradient-controls{grid-template-columns:1fr}}
 
+/* Cores configuráveis dos controles públicos */
+.form-page{--button-color:#00AE9D}
+.form-page .primary{background:var(--button-color)!important;color:#fff!important;box-shadow:none}
+.form-page .primary:hover{filter:brightness(1.08)}
+.form-page .secondary{border:1px solid var(--button-color);color:var(--button-color);background:transparent}
+.form-page .choice:has(input:checked){background:color-mix(in srgb,var(--button-color) 19%,white);border-color:var(--button-color)}
+.form-page .choice input{accent-color:var(--button-color)}
 /* Tema escuro opcional do painel administrativo */
 body.crm-dark{--bg:#0c171a;--text:#e8f2f0;--muted:#a4b7b3;--line:#2a4143;--white:#142529;--dark:#e8f2f0;--green:#00ae9d;--green2:#28c6b5;--red:#ff8d91;background:var(--bg);color:var(--text);color-scheme:dark}
 body.crm-dark .topbar,body.crm-dark .stat,body.crm-dark .panel,body.crm-dark .form-card:not(.form-page .form-card),body.crm-dark .table-wrap,body.crm-dark .modal,body.crm-dark dialog,body.crm-dark .login-card{background:#142529;color:var(--text);border-color:var(--line)}
@@ -198,7 +205,7 @@ const defaultConfig = {
  cover:'', next:'Próxima', back:'Voltar', send:'Enviar formulário',
  questions:baseQuestions, extra:[],
  rules:{other:'Outro', entry:'Sim'},
- backgroundMode:"solid",gradientEnd:"#003641",gradientAngle:135,extendBanner:false,bannerGlow:true
+ buttonColor:"#00AE9D",backgroundMode:"solid",gradientEnd:"#003641",gradientAngle:135,extendBanner:false,bannerGlow:true
 };
 let config = structuredClone(defaultConfig);
 let configAvailable = false;
@@ -230,7 +237,20 @@ function normalizeForm(saved = {}){
 }
 
 function formLink(id){
- return '?form='+encodeURIComponent(id);
+ const form=forms[id]||{};
+ const domain=String(form.customDomain||'').trim().toLowerCase();
+ if(domain && /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)){
+  return 'https://'+domain+'/?form='+encodeURIComponent(id);
+ }
+ return location.origin+location.pathname+'?form='+encodeURIComponent(id);
+}
+function slugify(value){
+ return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,64);
+}
+async function copyFormLink(id){
+ const url=formLink(id);
+ try{await navigator.clipboard.writeText(url);alert('Link copiado: '+url);}
+ catch{prompt('Copie o link do formulário:',url);}
 }
 
 async function loadFormConfig(){
@@ -422,11 +442,14 @@ function renderFormEditor(draft){
  const editor = $('formEditorFields');
  editor.innerHTML = '<h3>Capa e botões</h3>'+
  editField('Título','title',draft.title,'required maxlength="150"')+
+ '<div class="field"><label for="formSlug">Endereço personalizado do formulário (slug)</label><input id="formSlug" name="formSlug" type="text" maxlength="64" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="ex.: consorcio-viçosa" value="'+esc(editingFormId && forms[editingFormId] ? editingFormId : '')+'" '+(forms[editingFormId]?'readonly':'')+'><p class="hint">Define o identificador no link ?form=...; depois de publicar não pode ser alterado sem mudar o link.</p></div>'+
+ '<div class="field"><label for="customDomain">Subdomínio personalizado (opcional)</label><input id="customDomain" name="customDomain" type="text" placeholder="ex.: consorcio.seudominio.com.br" value="'+esc(draft.customDomain||'')+'"><p class="hint">O subdomínio precisa ser configurado no DNS e no Netlify antes de funcionar. Este campo apenas define o link exibido.</p></div>'+ 
  '<div class="field"><label for="bannerUpload">Banner do topo</label>'+
  '<input id="bannerUpload" type="file" accept="image/jpeg,image/png,image/webp">'+
  '<p class="hint">Tamanho recomendado: 1200 × 400 px (3:1). JPG, PNG ou WebP de até 10 MB.</p>'+
  '<img id="bannerPreview" alt="Prévia do banner" style="width:100%;max-width:480px;border-radius:12px">'+
  '<p><button type="button" class="secondary" id="removeBanner">Remover imagem</button></p></div>'+
+ '<div class="field"><label for="edit-buttonColor">Cor dos botões do formulário</label><div class="actions"><input id="edit-buttonColor" name="buttonColor" type="color" value="'+esc(draft.buttonColor||"#00AE9D")+'"><input id="buttonColorHex" aria-label="Código HEX dos botões" maxlength="7" value="'+esc(draft.buttonColor||"#00AE9D")+'"></div><p class="hint">Cor dos botões Próxima, Voltar, Enviar e opções selecionadas.</p></div>'+
  '<div class="field"><label for="edit-background">Cor de fundo</label><div class="actions">'+
  '<input id="edit-background" name="background" type="color" value="'+esc(draft.background || '#101810')+'">'+
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
@@ -439,6 +462,11 @@ function renderFormEditor(draft){
  '<p class="hint">Associe perguntas aos campos do CRM para preencher automaticamente os dados dos leads.</p>'+
  '<div id="extraEditors"></div><p><button type="button" id="addExtra" class="secondary">Adicionar pergunta</button></p>'+
  '';
+ const btnPicker=$('edit-buttonColor'),btnHex=$('buttonColorHex');
+ btnPicker.addEventListener('input',()=>{btnHex.value=btnPicker.value.toUpperCase();});
+ btnHex.addEventListener('input',()=>{let v=btnHex.value.trim();if(!v.startsWith('#'))v='#'+v;if(/^#[0-9a-f]{6}$/i.test(v))btnPicker.value=v;});
+ const slugInput=$('formSlug');
+ if(!slugInput.readOnly){slugInput.addEventListener('blur',()=>{slugInput.value=slugify(slugInput.value);});const titleInput=editor.querySelector('[name=title]');titleInput.addEventListener('input',()=>{if(!slugInput.dataset.manual)slugInput.value=slugify(titleInput.value);});slugInput.addEventListener('input',()=>{slugInput.dataset.manual='1';});slugInput.value=slugify(titleInput.value);}
  const picker=$('edit-background'), hex=$('backgroundHex');
  const endPicker=$('gradientEnd'),endHex=$('gradientEndHex');
  const startPicker=$('gradientStartPicker'),startHex=$('gradientStartHex');
@@ -527,7 +555,10 @@ function renderFormList(){
   remove.type='button';remove.className='danger small';remove.textContent='Excluir formulário';
   remove.disabled=false;remove.title='Excluir formulário definitivamente';
   remove.onclick=()=>deleteForm(id);
-  actions.append(edit,open,remove);
+  const copy=document.createElement('button');
+  copy.type='button';copy.className='secondary';copy.textContent='Copiar link';
+  copy.onclick=()=>copyFormLink(id);
+  actions.append(edit,open,copy,remove);
   row.append(title,actions);
   container.append(row);
  }
@@ -591,7 +622,18 @@ $('formSettings').onsubmit = async event => {
   $('editorMessage').textContent = 'Adicione pelo menos uma pergunta e preencha os textos dos botões, quando houver.';
   return;
  }
- const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),
+ const requestedSlug=slugify(fields.get('formSlug'));
+ if(!forms[editingFormId]){
+  if(!requestedSlug){$('editorMessage').textContent='Informe um endereço válido para o formulário.';return;}
+  if(forms[requestedSlug]){$('editorMessage').textContent='Esse endereço já está em uso.';return;}
+  editingFormId=requestedSlug;
+ }
+ const customDomain=String(fields.get('customDomain')||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/\/$/,'');
+ if(customDomain && !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(customDomain)){
+  $('editorMessage').textContent='Subdomínio inválido. Use exemplo.seudominio.com.br';return;
+ }
+ const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),customDomain,
+  buttonColor:fields.get('buttonColor'),
   cover:editorBanner,background:fields.get('background'),backgroundMode:fields.get('backgroundMode'),gradientEnd:fields.get('gradientEnd'),gradientAngle:Number(fields.get('gradientAngle')),extendBanner:fields.get('extendBanner')==='on',bannerGlow:fields.get('bannerGlow')==='on',imageHeader:true,
   custom:!editorLegacy,next:'Próxima',back:'Voltar',send:'Enviar formulário'};
  if(editorLegacy){
@@ -736,7 +778,8 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   document.body.style.background=background;page.style.background=background;
   if(config.extendBanner && isBanner(config.cover)){page.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;page.style.backgroundSize='cover';page.style.backgroundPosition='center top';}
   const header = document.querySelector('.form-hero');
-  page.style.setProperty('--form-accent',color);
+  page.style.setProperty('--form-accent',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
+  page.style.setProperty('--button-color',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
   page.classList.add('interactive-glow');
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
