@@ -292,6 +292,117 @@ body.public-form-active .form-page .hint[aria-live]{font-size:12px;letter-spacin
  body.public-form-active .form-page .actions .primary{min-height:58px}
 }
 
+
+/* V21 — borda luminosa contínua, sem triângulos ou formas no fundo.
+   A luz percorre a borda em desktop e mobile; cores vêm do editor. */
+@keyframes crm-edge-travel {
+  0%   {background-position: 0% 50%, 0% 50%}
+  50%  {background-position: 0% 50%, 100% 50%}
+  100% {background-position: 0% 50%, 0% 50%}
+}
+body.public-form-active .form-page .form-card {
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:visible!important;
+  border:1px solid color-mix(in srgb,var(--form-accent,#00AE9D) 52%,transparent)!important;
+  box-shadow:0 14px 42px #0003, 0 0 13px color-mix(in srgb,var(--form-accent,#00AE9D) 22%,transparent), inset 0 1px #ffffff16!important;
+}
+body.public-form-active .form-page .form-card::before,
+body.public-form-active .form-page .form-card::after {
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:-2px!important;
+  border:2px solid transparent!important;
+  border-radius:inherit!important;
+  padding:0!important;
+  pointer-events:none!important;
+  transform:none!important;
+  transform-origin:center!important;
+  -webkit-mask:none!important;
+  mask:none!important;
+  -webkit-mask-composite:initial!important;
+  mask-composite:initial!important;
+  background-image:linear-gradient(transparent,transparent),linear-gradient(100deg,transparent 10%,var(--form-accent,#00AE9D) 30%,color-mix(in srgb,var(--form-accent,#00AE9D) 55%,white) 35%,transparent 46%,transparent 65%,var(--form-accent,#00AE9D) 77%,transparent 89%)!important;
+  background-origin:padding-box,border-box!important;
+  background-clip:padding-box,border-box!important;
+  background-size:100% 100%,260% 100%!important;
+  animation:crm-edge-travel 7s ease-in-out infinite!important;
+  will-change:background-position!important;
+}
+body.public-form-active .form-page .form-card::before {z-index:2!important;filter:none!important;opacity:1!important}
+body.public-form-active .form-page .form-card::after {
+  z-index:-1!important;
+  inset:-3px!important;
+  border-width:3px!important;
+  filter:blur(9px)!important;
+  opacity:.78!important;
+}
+/* Nenhuma forma decorativa ou gradiente cônico no fundo do formulário. */
+body.public-form-active .form-page,
+body.public-form-active #formPage,
+body.public-form-active #appView>.wrap {background-image:none!important}
+@media (max-width:720px), (hover:none) and (pointer:coarse) {
+  body.public-form-active .form-page .form-card::before,
+  body.public-form-active .form-page .form-card::after {
+    transform:none!important;
+    animation:crm-edge-travel 7s ease-in-out infinite!important;
+    background-size:100% 100%,260% 100%!important;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  body.public-form-active .form-page .form-card::before,
+  body.public-form-active .form-page .form-card::after {animation:none!important;will-change:auto!important}
+}
+
+
+/* V22: borda em SVG, sem gradientes conicos ou pseudo-elementos giratorios.
+   O traco percorre o perimetro real do cartao, inclusive no Safari/iOS. */
+body.public-form-active .form-page .form-card::before,
+body.public-form-active .form-page .form-card::after{
+  content:none!important;display:none!important;animation:none!important;
+  background:none!important;transform:none!important;
+}
+body.public-form-active .form-page .form-card{
+  position:relative!important;isolation:isolate!important;overflow:visible!important;
+  border:1px solid color-mix(in srgb,var(--form-accent,#00AE9D) 50%,transparent)!important;
+  box-shadow:0 18px 52px #0004,0 0 12px color-mix(in srgb,var(--form-accent,#00AE9D) 24%,transparent),inset 0 1px #ffffff18!important;
+}
+body.public-form-active .form-page .crm-neon-border{
+  position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);
+  overflow:visible;pointer-events:none;z-index:4;display:block;
+  color:var(--form-accent,#00AE9D);
+}
+body.public-form-active .form-page .crm-neon-border rect{
+  fill:none;vector-effect:non-scaling-stroke;
+  stroke:currentColor;stroke-linejoin:round;
+}
+body.public-form-active .form-page .crm-neon-border .crm-neon-base{
+  stroke-width:1.2;opacity:.45;
+}
+body.public-form-active .form-page .crm-neon-border .crm-neon-runner{
+  stroke-width:3.3;stroke-linecap:round;
+  stroke-dasharray:12 88;stroke-dashoffset:0;
+  animation:crm-neon-trace 6s linear infinite;
+  filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px currentColor);
+}
+body.public-form-active .form-page .crm-neon-border .crm-neon-aura{
+  stroke-width:7;stroke-linecap:round;opacity:.38;
+  stroke-dasharray:12 88;stroke-dashoffset:0;
+  animation:crm-neon-trace 6s linear infinite;
+  filter:blur(6px);
+}
+@keyframes crm-neon-trace{to{stroke-dashoffset:-100}}
+@media(max-width:720px),(hover:none) and (pointer:coarse){
+ body.public-form-active .form-page .crm-neon-border{display:block!important;visibility:visible!important;opacity:1!important}
+ body.public-form-active .form-page .crm-neon-border .crm-neon-runner,
+ body.public-form-active .form-page .crm-neon-border .crm-neon-aura{animation:crm-neon-trace 6s linear infinite!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body.public-form-active .form-page .crm-neon-border .crm-neon-runner,
+ body.public-form-active .form-page .crm-neon-border .crm-neon-aura{animation:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -1037,6 +1148,27 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
    <button type="submit" class="primary" id="nextQuestion">Próxima</button>
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
+ // O contorno SVG evita os artefatos triangulares de gradientes giratorios no celular.
+ // pathLength normaliza o traco para acompanhar todo o perimetro em qualquer tamanho.
+ const neonCard = document.querySelector('#formPage .form-page .form-card');
+ if(neonCard){
+  const ns='http://www.w3.org/2000/svg';
+  const neon=document.createElementNS(ns,'svg');
+  neon.setAttribute('class','crm-neon-border');
+  neon.setAttribute('viewBox','0 0 100 100');
+  neon.setAttribute('preserveAspectRatio','none');
+  neon.setAttribute('aria-hidden','true');
+  for(const className of ['crm-neon-base','crm-neon-aura','crm-neon-runner']){
+   const rect=document.createElementNS(ns,'rect');
+   rect.setAttribute('class',className);
+   rect.setAttribute('x','0.45');rect.setAttribute('y','0.45');
+   rect.setAttribute('width','99.1');rect.setAttribute('height','99.1');
+   rect.setAttribute('rx','4');rect.setAttribute('ry','4');
+   rect.setAttribute('pathLength','100');
+   neon.appendChild(rect);
+  }
+  neonCard.prepend(neon);
+ }
  const form = $('leadForm');
  if(config.custom) form.querySelectorAll('.section').forEach(section=>section.remove());
  {
