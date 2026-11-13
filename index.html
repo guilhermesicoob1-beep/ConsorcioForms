@@ -264,8 +264,30 @@ function updateFormFilter(){
  for(const [id,form] of Object.entries(forms)) filter.add(new Option(form.title || defaultConfig.title,id));
  if(Object.hasOwn(forms,selected)) filter.value=selected;
 }
+function normalizeQuestionLabel(label){
+ return String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function inferCrmRole(question){
+ const q=normalizeQuestionLabel(question);
+ if(/\b(urgencia|urgente|prazo para adquirir|quando pretende)\b/.test(q))return 'urgency';
+ if(/\b(conhece|conhecimento)\b/.test(q)&&/\b(consorcio)\b/.test(q))return 'knows';
+ if(/\b(interesse|intencao|contratar|pesquisando)\b/.test(q))return 'intent';
+ if(/\b(nome completo|seu nome|qual seu nome)\b/.test(q))return 'name';
+ if(/\b(telefone|whatsapp|celular)\b/.test(q))return 'phone';
+ if(/\b(bem desejado|qual bem|tipo de bem)\b/.test(q))return 'asset';
+ return null;
+}
 function leadValues(answers){
- return Object.fromEntries(answers.filter(item=>item.role).map(item=>[item.role,item.answer.trim()]));
+ const result={};
+ for(const item of answers||[]){
+  const role=item.role||inferCrmRole(item.question);
+  if(role && String(item.answer??'').trim())result[role]=String(item.answer).trim();
+ }
+ return result;
+}
+function leadFieldFromHistory(answers,role){
+ const item=(answers||[]).find(a=>(a.role||inferCrmRole(a.question))===role && String(a.answer??'').trim());
+ return item?String(item.answer).trim():'';
 }
 const publicFormId = new URLSearchParams(location.search).get('form');
 
@@ -684,6 +706,9 @@ async function loadLeads(){
  leadsCache=rows.map(r=>{
  const l={id:String(r.id),formId:r.form_id || 'principal',created:r.created_at,name:r.name||'Lead sem nome',ddd:r.ddd||'',phone:r.phone||'',asset:r.asset==='Outro'?(r.asset_other||'Outro'):(r.asset||''),value:Number(r.asset_price)||0,hasEntry:r.has_entry,entry:Number(r.entry_amount)||0,urgency:r.urgency==='Planejamento'?'Compra planejada':r.urgency,knows:r.knows_consorcio,intent:r.intent,status:r.status==='Fechado'?'closed':r.status==='Em atendimento'?'responded':'new'};
  l.answers=Array.isArray(r.form_answers)?r.form_answers.filter(item=>typeof item?.question==='string' && typeof item.answer==='string'):[];
+ l.urgency=l.urgency||leadFieldFromHistory(l.answers,'urgency');
+ l.knows=l.knows||leadFieldFromHistory(l.answers,'knows');
+ l.intent=l.intent||leadFieldFromHistory(l.answers,'intent');
  return l;
  });renderLeads();
  }catch(e){console.error(e);$('empty').textContent='Erro ao carregar leads: '+e.message;}
@@ -960,7 +985,7 @@ function setupQuestions(form){
     return;
    }
    submitLead(event, answered().map(item=>({
-    question:item.question.title, answer:item.answer, role:item.question.role
+    question:item.question.title, answer:item.answer, role:item.question.role || inferCrmRole(item.question.title)
    })));
    return;
   }
@@ -1024,7 +1049,7 @@ function renderLeads(){
  if(filter!=='all')rows=rows.filter(l=>l.status===filter);
  rows.sort(compareLeads);
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency==='Compra planejada'?'<span class="tag">Planejada</span>':l.urgency==='Urgente'?'<span class="tag orange">Urgente</span>':'—'}</td><td>${esc(l.intent)}</td><td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency?'<span class="tag">'+esc(l.urgency)+'</span>':'—'}</td><td>${esc(l.intent||'—')}</td><td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
