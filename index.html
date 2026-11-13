@@ -227,7 +227,16 @@ function updateFormFilter(){
 function leadValues(answers){
  return Object.fromEntries(answers.filter(item=>item.role).map(item=>[item.role,item.answer.trim()]));
 }
-const publicFormId = new URLSearchParams(location.search).get('form');
+const requestedPathSlug = decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g,'')).toLowerCase();
+const legacyQueryFormId = new URLSearchParams(location.search).get('form');
+let publicFormId = legacyQueryFormId;
+function resolvePublicFormId(){
+ if(legacyQueryFormId !== null) return legacyQueryFormId;
+ if(!requestedPathSlug || requestedPathSlug==='index.html') return null;
+ const entry = Object.entries(forms).find(([id, form]) =>
+  (form.slug || slugify(form.title || id)) === requestedPathSlug || id.toLowerCase()===requestedPathSlug);
+ return entry ? entry[0] : '__not_found__';
+}
 
 function normalizeForm(saved = {}){
  return {...defaultConfig, ...saved,
@@ -238,12 +247,10 @@ function normalizeForm(saved = {}){
 
 function formLink(id){
  const form=forms[id]||{};
- const domain=String(form.customDomain||'').trim().toLowerCase();
- if(domain && /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)){
-  return 'https://'+domain+'/?form='+encodeURIComponent(id);
- }
- return location.origin+location.pathname+'?form='+encodeURIComponent(id);
+ const slug=slugify(form.slug || form.title || id) || slugify(id);
+ return location.origin+'/'+encodeURIComponent(slug);
 }
+
 function slugify(value){
  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,64);
 }
@@ -257,6 +264,7 @@ async function loadFormConfig(){
  try{
   const saved = await adminRequest('form_read');
   forms = saved.forms ?? {principal:saved};
+  publicFormId = resolvePublicFormId();
   config = normalizeForm(forms[publicFormId || 'principal']);
   configAvailable = true;
   updateFormFilter();
@@ -442,8 +450,8 @@ function renderFormEditor(draft){
  const editor = $('formEditorFields');
  editor.innerHTML = '<h3>Capa e botões</h3>'+
  editField('Título','title',draft.title,'required maxlength="150"')+
- '<div class="field"><label for="formSlug">Endereço personalizado do formulário (slug)</label><input id="formSlug" name="formSlug" type="text" maxlength="64" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="ex.: consorcio-viçosa" value="'+esc(editingFormId && forms[editingFormId] ? editingFormId : '')+'" '+(forms[editingFormId]?'readonly':'')+'><p class="hint">Define o identificador no link ?form=...; depois de publicar não pode ser alterado sem mudar o link.</p></div>'+
- '<div class="field"><label for="customDomain">Subdomínio personalizado (opcional)</label><input id="customDomain" name="customDomain" type="text" placeholder="ex.: consorcio.seudominio.com.br" value="'+esc(draft.customDomain||'')+'"><p class="hint">O subdomínio precisa ser configurado no DNS e no Netlify antes de funcionar. Este campo apenas define o link exibido.</p></div>'+ 
+ '<div class="field"><label for="formSlug">Nome do endereço do formulário</label><input id="formSlug" name="formSlug" type="text" maxlength="64" placeholder="ex.: consorcio-veiculos" value="'+esc(draft.slug || slugify(draft.title || '') || '')+'"><p class="hint">Seu link será https://formsconsorcio.netlify.app/<strong>nome-do-formulario</strong>. Pode alterar o endereço ao editar; o identificador interno e os leads permanecem iguais.</p></div>'+
+
  '<div class="field"><label for="bannerUpload">Banner do topo</label>'+
  '<input id="bannerUpload" type="file" accept="image/jpeg,image/png,image/webp">'+
  '<p class="hint">Tamanho recomendado: 1200 × 400 px (3:1). JPG, PNG ou WebP de até 10 MB.</p>'+
@@ -623,16 +631,12 @@ $('formSettings').onsubmit = async event => {
   return;
  }
  const requestedSlug=slugify(fields.get('formSlug'));
- if(!forms[editingFormId]){
-  if(!requestedSlug){$('editorMessage').textContent='Informe um endereço válido para o formulário.';return;}
-  if(forms[requestedSlug]){$('editorMessage').textContent='Esse endereço já está em uso.';return;}
-  editingFormId=requestedSlug;
- }
- const customDomain=String(fields.get('customDomain')||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/\/$/,'');
- if(customDomain && !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(customDomain)){
-  $('editorMessage').textContent='Subdomínio inválido. Use exemplo.seudominio.com.br';return;
- }
- const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),customDomain,
+ if(!requestedSlug){$('editorMessage').textContent='Informe o nome do endereço do formulário.';return;}
+ const duplicate = Object.entries(forms).some(([id, saved]) => id !== editingFormId &&
+  slugify(saved.slug || saved.title || id) === requestedSlug);
+ if(duplicate){$('editorMessage').textContent='Este endereço já pertence a outro formulário. Escolha outro nome.';return;}
+ // Mantém o ID existente, mesmo que seja um UUID; apenas o endereço público muda.
+ const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),slug:requestedSlug,
   buttonColor:fields.get('buttonColor'),
   cover:editorBanner,background:fields.get('background'),backgroundMode:fields.get('backgroundMode'),gradientEnd:fields.get('gradientEnd'),gradientAngle:Number(fields.get('gradientAngle')),extendBanner:fields.get('extendBanner')==='on',bannerGlow:fields.get('bannerGlow')==='on',imageHeader:true,
   custom:!editorLegacy,next:'Próxima',back:'Voltar',send:'Enviar formulário'};
@@ -733,7 +737,7 @@ async function logout(){
  }catch(err){alert(err.message);}
 }
 function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
-if(publicFormId !== null){
+if(legacyQueryFormId !== null || (requestedPathSlug && requestedPathSlug!=='index.html')){
  $('loginView').style.display='none';
  $('appView').style.display='block';
  document.querySelector('.topbar').style.display='none';
