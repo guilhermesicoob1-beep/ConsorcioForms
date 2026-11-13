@@ -240,7 +240,7 @@ function refreshRoutes(){
  const blocks = [...$('extraEditors').children].filter(el=>el.matches('fieldset'));
  blocks.forEach((block,index)=>{
   const field = block.querySelector('[name="extra-field"]');
-  const selected = block.pendingField || field.value || ''; 
+  const selected = block.pendingField ?? field.value ?? ''; 
   delete block.pendingField;
   field.replaceChildren(new Option('Sempre',''));
   if(index>0 || editorLegacy) field.add(new Option('Entrada em % do valor do bem','entryPercent'));
@@ -253,6 +253,7 @@ function refreshRoutes(){
    field.add(new Option(prev.querySelector('[name="extra-title"]').value || 'Pergunta sem título',prev.dataset.key));
   }
   if([...field.options].some(option=>option.value===selected)) field.value=selected;
+  else if(selected){field.add(new Option('Condição anterior',selected));field.value=selected;}
   block.updateCondition();
   const container = block.querySelector('[data-routes]');
   const type = block.querySelector('[name="extra-type"]').value;
@@ -304,7 +305,9 @@ function addQuestionEditor(question = {}){
  '</select></label> <label>Percentual (%) <input name="extra-percent" type="number" min="0" step="0.01" value="'+esc(question.percent ?? 50)+'" required></label>'+
  '<p class="hint">Exemplo com 50%. Para um bem de R$ 100.000, a entrada de R$ 50.000 corresponde a 50%. Sem entrada corresponde a 0%.</p></div>'+
  '<p><label><input type="checkbox" name="extra-required"'+(question.required?' checked':'')+'> Obrigatória</label></p>'+
- '<div data-routes></div><p><button class="danger" type="button">Excluir pergunta</button></p>';
+ '<div data-routes></div><p><button class="secondary move-up" type="button">↑ Subir</button> <button class="secondary move-down" type="button">↓ Descer</button> <button class="danger" type="button">Excluir pergunta</button></p>';
+ block.querySelector('.move-up').onclick=()=>{const prev=block.previousElementSibling;if(prev&&prev.matches('fieldset')){prev.before(block);refreshRoutes();}};
+ block.querySelector('.move-down').onclick=()=>{const next=block.nextElementSibling;if(next&&next.matches('fieldset')){next.after(block);refreshRoutes();}};
  const field = block.querySelector('[name="extra-field"]');
  const match = block.querySelector('[name="extra-match"]');
  block.updateCondition = () => {
@@ -324,7 +327,7 @@ function addQuestionEditor(question = {}){
   }
  });
  for(const name of ['extra-title','extra-type','extra-options']){
-  block.querySelector('[name="'+name+'"]').addEventListener('input',refreshRoutes);
+  block.querySelector('[name="'+name+'"]').addEventListener('change',refreshRoutes);
  }
  $('extraEditors').append(block);
 }
@@ -429,7 +432,7 @@ function renderFormEditor(draft){
  (Array.isArray(draft.extra)?draft.extra:[]).forEach(addQuestionEditor);
  refreshRoutes();
  $('addExtra').onclick = ()=>{
-  addQuestionEditor();
+  addQuestionEditor({type:'Texto',required:true});
   refreshRoutes();
   $('extraEditors').lastElementChild.querySelector('[name="extra-title"]').focus();
  };
