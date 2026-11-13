@@ -126,6 +126,20 @@ body.crm-dark .form-open-link:hover{color:#70e4d6!important;border-color:#00ae9d
 body.crm-dark #dashboard tbody tr:hover{background:#1b3437}
 body.crm-dark .topbar{box-shadow:none}
 @media(max-width:650px){#formList{padding:18px}.form-management-item{padding:15px}.form-management-item .actions>*{flex:1 1 auto}.wrap{margin:20px auto}#dashboard .stat{padding:16px;min-height:108px}#dashboard .stat b{font-size:28px}}
+.crm-column-row{display:flex;gap:10px;align-items:center;margin:9px 0}.crm-column-row input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px}.crm-column-row button{flex-shrink:0}@media(max-width:600px){.crm-column-row{flex-wrap:wrap}}
+
+/* V16 — cartão de formulário isolado com luz orbital animada */
+.form-page{max-width:720px!important;background:transparent!important;overflow:visible!important;padding:18px 16px 36px!important;isolation:isolate}
+.form-page .form-hero{display:none}
+.form-page .public-banner{display:block;width:100%;height:auto;max-height:340px;object-fit:contain;border-radius:18px;margin:0 auto 24px!important;box-shadow:0 14px 35px #0002}
+.form-page .form-card{position:relative;isolation:isolate;background:color-mix(in srgb,var(--form-bg,#003641) 83%,#07191c)!important;color:#f6fffd!important;border:1px solid color-mix(in srgb,var(--form-accent,#00AE9D) 35%,transparent)!important;border-radius:26px!important;padding:clamp(22px,5vw,38px)!important;box-shadow:0 18px 60px #0005,inset 0 1px #ffffff16;overflow:visible}
+.form-page .form-card::before{content:'';position:absolute;inset:-2px;z-index:-2;border-radius:28px;padding:2px;background:conic-gradient(from var(--orbit-angle,0deg),transparent 0deg,transparent 50deg,var(--form-accent,#00AE9D) 88deg,transparent 122deg,transparent 210deg,color-mix(in srgb,var(--form-accent,#00AE9D) 70%,white) 252deg,transparent 290deg,transparent 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:crm-orbit 7s linear infinite;pointer-events:none}
+.form-page .form-card::after{content:'';position:absolute;inset:-6px;z-index:-3;border-radius:32px;background:conic-gradient(from var(--orbit-angle,0deg),transparent 0 55deg,color-mix(in srgb,var(--form-accent,#00AE9D) 52%,transparent) 88deg,transparent 130deg,transparent 220deg,color-mix(in srgb,var(--form-accent,#00AE9D) 42%,transparent) 255deg,transparent 290deg);filter:blur(16px);opacity:.8;animation:crm-orbit 7s linear infinite;pointer-events:none}
+@property --orbit-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes crm-orbit{to{--orbit-angle:360deg}}
+.form-page .field{margin:14px 0}.form-page .field>label,.form-page .field strong{color:#f3fffd!important;font-weight:600}.form-page .field input:not([type=radio]):not([type=checkbox]),.form-page .field select,.form-page .field textarea{background:#ffffff12!important;color:#fff!important;border:1px solid #ffffff38!important;border-radius:14px!important;min-height:48px}.form-page .field input::placeholder{color:#d4e6e0a8}.form-page .choice{background:#ffffff0e!important;color:#f3fffd!important;border:1px solid #ffffff32!important;border-radius:13px!important}.form-page .choice:has(input:checked){background:color-mix(in srgb,var(--form-accent) 28%,#103034)!important;border-color:var(--form-accent)!important}.form-page .hint,.form-page .footer-note{color:#d6e8e1!important}.form-page .primary{background:var(--button-color)!important;color:var(--button-text,#fff)!important}.form-page .secondary{background:transparent!important;color:#fff!important;border-color:#ffffff66!important}.form-page .section{border-color:#ffffff20}
+@media(max-width:600px){.form-page{margin:0 auto!important}.form-page .form-card{padding:22px 18px!important}.form-page .public-banner{margin-bottom:18px!important}}
+@media(prefers-reduced-motion:reduce){.form-page .form-card::before,.form-page .form-card::after{animation:none}}
 </style>
 </head>
 <body>
@@ -157,7 +171,7 @@ body.crm-dark .topbar{box-shadow:none}
    <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Defina a prioridade dos critérios e a direção da ordenação.</div></div></div>
    <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
    <div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
-   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th>Urgência</th><th>Interesse</th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
+   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th id="dynamicLeadHeaders" style="display:none"></th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
   </div>
   <div id="formPage" class="hidden"></div>
  </main>
@@ -260,6 +274,52 @@ const crmFields = {
  entry:'Valor da entrada', urgency:'Urgência (Urgente ou Compra planejada)',
  knows:'Conhece consórcio (Sim ou Não)', intent:'Interesse (Quero contratar ou Estou pesquisando)'
 };
+// Campos configuráveis por formulário. Os valores ficam no JSON do formulário
+// e as respostas permanecem em form_answers, sem exigir novas colunas SQL.
+const defaultLeadColumns=[{key:'urgency',label:'Urgência'},{key:'knows',label:'Conhece consórcio?'},{key:'intent',label:'Interesse'}];
+function crmColumns(form){
+ const columns=Array.isArray(form?.crmColumns)?form.crmColumns:defaultLeadColumns;
+ return columns.filter(c=>c&&typeof c.key==='string'&&typeof c.label==='string');
+}
+function allCrmColumns(){
+ const byKey=new Map();
+ for(const form of Object.values(forms))for(const col of crmColumns(form))if(!byKey.has(col.key))byKey.set(col.key,col);
+ return [...byKey.values()];
+}
+function crmRoleOptions(){
+ const fields={...crmFields};
+ const current=forms[editingFormId]||{};
+ for(const col of crmColumns(current))fields[col.key]=col.label;
+ for(const row of document.querySelectorAll('#crmColumnsEditor [data-crm-column]')){
+  const key=row.dataset.key,label=row.querySelector('[data-column-label]')?.value.trim();
+  if(key&&label)fields[key]=label;
+ }
+ return fields;
+}
+function refreshCrmRoleOptions(){
+ const roles=crmRoleOptions();
+ document.querySelectorAll('#extraEditors select[name="extra-role"]').forEach(select=>{
+  const selected=select.value;
+  select.innerHTML='<option value="">Somente resposta</option>'+Object.entries(roles).map(([key,label])=>`<option value="${esc(key)}">${esc(label)}</option>`).join('');
+  select.value=selected;
+ });
+}
+function addCrmColumnEditor(col={}){
+ const key=col.key||'custom_'+crypto.randomUUID().replace(/-/g,'').slice(0,12);
+ const row=document.createElement('div');row.dataset.crmColumn='';row.dataset.key=key;
+ row.className='crm-column-row';
+ row.innerHTML=`<input data-column-label maxlength="70" placeholder="Nome da coluna no CRM" value="${esc(col.label||'')}"><button type="button" class="secondary small" data-remove-column>Remover</button>`;
+ row.querySelector('[data-column-label]').addEventListener('input',refreshCrmRoleOptions);
+ row.querySelector('[data-remove-column]').onclick=()=>{row.remove();refreshCrmRoleOptions();};
+ $('crmColumnsEditor').append(row);refreshCrmRoleOptions();
+}
+function getLeadColumnValue(lead,col){
+ if(col.key==='urgency')return lead.urgency||leadFieldFromHistory(lead.answers,'urgency');
+ if(col.key==='knows')return lead.knows||leadFieldFromHistory(lead.answers,'knows');
+ if(col.key==='intent')return lead.intent||leadFieldFromHistory(lead.answers,'intent');
+ const a=(lead.answers||[]).find(a=>a.role===col.key);
+ return a?.answer||'';
+}
 function updateFormFilter(){
  const filter=$('filterForm'), selected=filter.value;
  filter.replaceChildren(new Option('Todos os formulários',''));
@@ -413,7 +473,7 @@ function addQuestionEditor(question = {}){
  '<label>Tipo <select name="extra-type"><option value="Texto">Texto</option><option value="Opções"'+(question.type==='Opções'?' selected':'')+'>Botões</option>'+(question.type==='Número'?'<option value="Número" selected>Número</option>':'')+'</select></label>'+
  '<div data-choices>'+editField('Textos dos botões separados por vírgula','extra-options',(question.options ?? []).join(', '),'maxlength="500"','extra-options-'+id)+'</div>'+
  '<p><label>Usar no CRM <select name="extra-role"><option value="">Somente resposta</option>'+
- Object.entries(crmFields).map(([key,label])=>'<option value="'+key+'"'+(key===question.role?' selected':'')+'>'+esc(label)+'</option>').join('')+
+ Object.entries(crmRoleOptions()).map(([key,label])=>'<option value="'+key+'"'+(key===question.role?' selected':'')+'>'+esc(label)+'</option>').join('')+
  '</select></label></p>'+
  '<label>Mostrar se <select name="extra-field"></select></label> '+
  '<label data-answer>Resposta igual a <input name="extra-match" value="'+esc(question.match ?? '')+'"></label>'+
@@ -447,6 +507,7 @@ function addQuestionEditor(question = {}){
   block.querySelector('[name="'+name+'"]').addEventListener('change',refreshRoutes);
  }
  $('extraEditors').append(block);
+ refreshCrmRoleOptions();
 }
 
 function isBanner(value){
@@ -510,6 +571,7 @@ function renderFormEditor(draft){
  '<input id="backgroundHex" aria-label="Código HEX da cor de fundo" placeholder="#003641" maxlength="7" required pattern="#?[0-9a-fA-F]{6}" value="'+esc(draft.background || '#101810')+'">'+
  '</div></div>'+
   `<div class="appearance-options"><div class="field"><label>Estilo do fundo</label><select name="backgroundMode" id="backgroundMode"><option value="solid">Cor sólida</option><option value="gradient">Degradê</option></select></div><div class="gradient-studio" id="gradientStudio" hidden><label>Escolha um degradê</label><div class="gradient-presets" id="gradientPresets"></div><div class="gradient-controls"><div class="field"><label>Cor inicial</label><div class="gradient-color-row"><input type="color" id="gradientStartPicker" aria-label="Selecionar cor inicial"><input type="text" id="gradientStartHex" maxlength="7" aria-label="HEX da cor inicial"></div></div><div class="field"><label>Cor final</label><div class="gradient-color-row"><input type="color" name="gradientEnd" id="gradientEnd" value="${esc(draft.gradientEnd||'#003641')}"><input type="text" id="gradientEndHex" maxlength="7" aria-label="HEX da cor final"></div></div></div><label>Direção do degradê</label><div class="gradient-directions" id="gradientDirections"></div><div class="gradient-angle-line"><input type="range" id="gradientAngleSlider" min="0" max="360" step="1" aria-label="Ângulo do degradê"><input type="number" name="gradientAngle" id="gradientAngle" min="0" max="360" value="${esc(draft.gradientAngle??135)}" aria-label="Ângulo em graus"><span>graus</span></div></div><label class="toggle-row"><input type="checkbox" name="extendBanner" ${draft.extendBanner?'checked':''}> Estender as cores do banner para o fundo (efeito ambiente)</label><label class="toggle-row"><input type="checkbox" name="bannerGlow" ${draft.bannerGlow!==false?'checked':''}> Brilho nos botões (cor principal do formulário)</label></div><div id="appearancePreview" class="appearance-preview">Prévia do fundo</div>`+
+  '<h3>Campos e filtros do CRM</h3><p class="hint">Renomeie as colunas, remova as que não deseja exibir ou adicione novas. Cada campo aparece automaticamente em <b>Usar no CRM</b> e na tabela de leads.</p><div id="crmColumnsEditor"></div><p><button type="button" class="secondary" id="addCrmColumn">+ Adicionar campo ao CRM</button></p>'+
   '<h3>Perguntas do formulário</h3>'+
  (editorLegacy ? Object.keys(baseQuestions).map(key=>editField(baseQuestions[key],'legacy-'+key,draft.questions[key],'required maxlength="200"')).join('')+
  '<p><label>Detalhar o bem <select name="rule-other">'+options(['Outro','Sempre'],draft.rules.other)+'</select></label></p>'+
@@ -571,6 +633,8 @@ function renderFormEditor(draft){
    if(uploader.isConnected) uploader.disabled=remove.disabled=submit.disabled=false;
   }
  };
+ crmColumns(draft).forEach(addCrmColumnEditor);
+ $('addCrmColumn').onclick=()=>addCrmColumnEditor();
  (Array.isArray(draft.extra)?draft.extra:[]).forEach(addQuestionEditor);
  refreshRoutes();
  $('addExtra').onclick = ()=>{
@@ -684,6 +748,7 @@ $('formSettings').onsubmit = async event => {
  }
 
  draft.extra = extra;
+ draft.crmColumns=Array.from($('crmColumnsEditor').querySelectorAll('[data-crm-column]')).map(row=>({key:row.dataset.key,label:row.querySelector('[data-column-label]').value.trim()})).filter(c=>c.label);
  button.disabled = true;
  try{
   const id = editingFormId;
@@ -818,19 +883,21 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
  if(config.custom) form.querySelectorAll('.section').forEach(section=>section.remove());
  if(config.custom || config.imageHeader){
   const page = document.querySelector('.form-page');
-  const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#101810';
+  const color = /^#[0-9a-f]{6}$/i.test(config.background) ? config.background : '#003641';
+  page.style.setProperty('--form-bg',color);
   const background=config.backgroundMode==='gradient'?`linear-gradient(${Number(config.gradientAngle)||135}deg,${color},${/^#[0-9a-f]{6}$/i.test(config.gradientEnd)?config.gradientEnd:'#003641'})`:color;
-  document.body.style.background=background;page.style.background=background;
-  if(config.extendBanner && isBanner(config.cover)){page.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;page.style.backgroundSize='cover';page.style.backgroundPosition='center top';}
+  document.body.style.background=background;page.style.background="transparent";
+  if(config.extendBanner && isBanner(config.cover)){document.body.style.backgroundImage=`linear-gradient(180deg,transparent 0%,${color} 85%),url("${config.cover}")`;document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center top';}
   const header = document.querySelector('.form-hero');
   page.style.setProperty('--form-accent',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
   page.style.setProperty('--button-color',/^#[0-9a-f]{6}$/i.test(config.buttonColor)?config.buttonColor:'#00AE9D');
   page.classList.add('interactive-glow');
+  page.style.setProperty('--button-text', '#ffffff');
   if(isBanner(config.cover)){
    const banner=document.createElement('img');
    banner.src=config.cover;
    banner.alt='';banner.className='public-banner'+' glow-banner';
-   banner.style.cssText='display:block;width:100%;height:auto;border-radius:16px;margin-bottom:18px';
+   banner.style.cssText='display:block;width:100%;height:auto;border-radius:18px;margin-bottom:24px';
    header.replaceWith(banner);
   }else header.remove();
  }
@@ -1050,8 +1117,11 @@ function renderLeads(){
  let rows=all.filter(l=>(l.name+' '+l.ddd+l.phone).toLowerCase().includes(q));
  if(filter!=='all')rows=rows.filter(l=>l.status===filter);
  rows.sort(compareLeads);
+ const columns=allCrmColumns();
+ const head=$('leadRows').closest('table').querySelector('thead tr');
+ head.innerHTML='<th>Lead</th><th>Bem desejado</th>'+columns.map(c=>'<th>'+esc(c.label)+'</th>').join('')+'<th>Status</th><th>Ações</th>';
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td><td>${l.urgency?'<span class="tag">'+esc(l.urgency)+'</span>':'—'}</td><td>${esc(l.intent||'—')}</td><td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td>${columns.map(c=>'<td>'+esc(getLeadColumnValue(l,c)||'—')+'</td>').join('')}<td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1062,7 +1132,7 @@ function showDetails(id){
  $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><h2>${esc(l.name)}</h2><span class="muted">Lead recebido em ${new Date(l.created).toLocaleString('pt-BR')}</span></div><button class="close" onclick="closeModal()">✕</button></div>
  <p>${statusTag(l.status)}</p>
  <div class="detail-grid">
- ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
+ ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${allCrmColumns().filter(c=>!['urgency','knows','intent'].includes(c.key)).map(c=>detail(c.label,getLeadColumnValue(l,c))).join('')}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
  <h3 style="font-size:15px;margin:20px 0 8px">Respostas rápidas</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">Selecione uma resposta rápida para visualizar a mensagem.</div>
  <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button><button class="danger" onclick="deleteLead('${l.id}')">Excluir lead</button></div>
