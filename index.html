@@ -84,6 +84,46 @@ body.crm-dark .editor-tab.active{color:#082e31}body.crm-dark .gradient-direction
 body.crm-dark .choice:not(.form-page .choice){background:#213a3e;color:#e8f2f0}
 body.crm-dark .muted,body.crm-dark .hint,body.crm-dark .stat span{color:var(--muted)}
 #themeToggle{white-space:nowrap}
+
+/* Painel administrativo - refinamento visual */
+:root{--green:#008f82;--green2:#00ae9d;--dark:#003641;--bg:#f5f8f8;--text:#17383c;--muted:#6c8185;--line:#e0e9e9}
+body:not(.crm-dark) #appView{background:#f5f8f8}
+.topbar{padding:17px clamp(18px,3vw,40px);box-shadow:0 1px 0 #e5eeee}
+.topbar strong{font-size:14px;letter-spacing:.12em;color:#003641}
+.wrap{max-width:1250px;margin:34px auto}
+.heading h1{font-size:clamp(26px,3vw,34px);font-weight:800;letter-spacing:-.04em;color:var(--text)}
+#dashboard>.heading{padding:6px 0 10px}
+#dashboard>.heading .muted{font-size:14px}
+#dashboard .stats{gap:16px;margin:24px 0}
+#dashboard .stat{min-height:128px;border-radius:18px;padding:23px;border-color:var(--line);box-shadow:0 8px 30px #123b3910}
+#dashboard .stat b{font-size:34px;letter-spacing:-.045em;color:var(--text)}
+#dashboard .stat span{font-weight:600}
+#dashboard .panel{border-radius:17px}
+#dashboard .table-wrap{border-radius:17px;box-shadow:0 10px 35px #123b390b}
+#dashboard th{background:#f9fbfb;color:#627a7d;padding:17px 15px}
+#dashboard td{padding:17px 15px}
+#dashboard tbody tr:hover{background:#f7fbfa}
+#dashboard .toolbar{gap:12px}
+#dashboard .toolbar .search{max-width:430px}
+button,.form-open-link{transition:background .2s ease,border-color .2s ease,transform .2s ease}
+button:hover{filter:brightness(.98)}
+#formList{width:min(860px,calc(100vw - 32px));max-width:860px;max-height:88vh;border:1px solid var(--line);border-radius:24px;padding:30px;box-shadow:0 28px 90px #102e3040}
+#formList h2{margin:0 0 8px;font-size:27px;letter-spacing:-.035em}
+#formList .hint{margin:0;line-height:1.6}
+#formList .editor-tabs{margin:24px 0 20px}
+#formList>.actions{border-top:1px solid var(--line);padding-top:20px;margin-top:22px;justify-content:flex-end}
+.form-management-item{background:#fff;border:1px solid var(--line);border-radius:16px;padding:19px 20px;margin:0 0 12px;box-shadow:0 5px 18px #0c33320a}
+.form-management-item>strong{font-size:16px;color:var(--text);display:block;margin-bottom:14px;line-height:1.4}
+.form-management-item .actions{margin-top:0!important;gap:9px;align-items:center}
+.form-management-item .actions button{padding:10px 14px;font-size:12px}
+.form-open-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:transparent!important;color:var(--text)!important;text-decoration:none;font-size:12px;font-weight:700;box-shadow:none!important}
+.form-open-link:hover{border-color:var(--green2);background:transparent!important;color:var(--green)!important}
+body.crm-dark .form-management-item{background:#192f33;border-color:#355257;box-shadow:none}
+body.crm-dark .form-open-link{color:#d8eeeb!important;border-color:#456267}
+body.crm-dark .form-open-link:hover{color:#70e4d6!important;border-color:#00ae9d}
+body.crm-dark #dashboard tbody tr:hover{background:#1b3437}
+body.crm-dark .topbar{box-shadow:none}
+@media(max-width:650px){#formList{padding:18px}.form-management-item{padding:15px}.form-management-item .actions>*{flex:1 1 auto}.wrap{margin:20px auto}#dashboard .stat{padding:16px;min-height:108px}#dashboard .stat b{font-size:28px}}
 </style>
 </head>
 <body>
@@ -540,8 +580,7 @@ function renderFormList(){
  container.replaceChildren();
  for(const [id,saved] of Object.entries(forms)){
   const row = document.createElement('div');
-  row.className = 'panel';
-  row.style.marginBottom = '12px';
+  row.className = 'form-management-item';
   const title = document.createElement('strong');
   title.textContent = saved.title || defaultConfig.title;
   const actions = document.createElement('div');
@@ -553,12 +592,12 @@ function renderFormList(){
   edit.textContent = 'Editar';
   edit.onclick = ()=>openFormEditor(id);
   const open = document.createElement('a');
-  open.className = 'primary';
-  open.style.display = 'inline-block';
+  open.className = 'form-open-link';
+  open.setAttribute('aria-label','Abrir formulário para preenchimento');
   open.href = formLink(id);
   open.target = '_blank';
   open.rel = 'noopener';
-  open.textContent = 'Abrir para preencher';
+  open.textContent = 'Abrir para preencher ↗';
   const remove=document.createElement('button');
   remove.type='button';remove.className='danger small';remove.textContent='Excluir formulário';
   remove.disabled=false;remove.title='Excluir formulário definitivamente';
