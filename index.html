@@ -267,16 +267,7 @@ function updateFormFilter(){
 function leadValues(answers){
  return Object.fromEntries(answers.filter(item=>item.role).map(item=>[item.role,item.answer.trim()]));
 }
-const requestedPathSlug = decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g,'')).toLowerCase();
-const legacyQueryFormId = new URLSearchParams(location.search).get('form');
-let publicFormId = legacyQueryFormId;
-function resolvePublicFormId(){
- if(legacyQueryFormId !== null) return legacyQueryFormId;
- if(!requestedPathSlug || requestedPathSlug==='index.html') return null;
- const entry = Object.entries(forms).find(([id, form]) =>
-  (form.slug || slugify(form.title || id)) === requestedPathSlug || id.toLowerCase()===requestedPathSlug);
- return entry ? entry[0] : '__not_found__';
-}
+const publicFormId = new URLSearchParams(location.search).get('form');
 
 function normalizeForm(saved = {}){
  return {...defaultConfig, ...saved,
@@ -286,14 +277,9 @@ function normalizeForm(saved = {}){
 }
 
 function formLink(id){
- const form=forms[id]||{};
- const slug=slugify(form.slug || form.title || id) || slugify(id);
- return location.origin+'/'+encodeURIComponent(slug);
+ return location.origin + location.pathname + '?form=' + encodeURIComponent(id);
 }
 
-function slugify(value){
- return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,64);
-}
 async function copyFormLink(id){
  const url=formLink(id);
  try{await navigator.clipboard.writeText(url);alert('Link copiado: '+url);}
@@ -304,7 +290,6 @@ async function loadFormConfig(){
  try{
   const saved = await adminRequest('form_read');
   forms = saved.forms ?? {principal:saved};
-  publicFormId = resolvePublicFormId();
   config = normalizeForm(forms[publicFormId || 'principal']);
   configAvailable = true;
   updateFormFilter();
@@ -490,8 +475,6 @@ function renderFormEditor(draft){
  const editor = $('formEditorFields');
  editor.innerHTML = '<h3>Capa e botões</h3>'+
  editField('Título','title',draft.title,'required maxlength="150"')+
- '<div class="field"><label for="formSlug">Nome do endereço do formulário</label><input id="formSlug" name="formSlug" type="text" maxlength="64" placeholder="ex.: consorcio-veiculos" value="'+esc(draft.slug || slugify(draft.title || '') || '')+'"><p class="hint">Seu link será https://formsconsorcio.netlify.app/<strong>nome-do-formulario</strong>. Pode alterar o endereço ao editar; o identificador interno e os leads permanecem iguais.</p></div>'+
-
  '<div class="field"><label for="bannerUpload">Banner do topo</label>'+
  '<input id="bannerUpload" type="file" accept="image/jpeg,image/png,image/webp">'+
  '<p class="hint">Tamanho recomendado: 1200 × 400 px (3:1). JPG, PNG ou WebP de até 10 MB.</p>'+
@@ -513,8 +496,6 @@ function renderFormEditor(draft){
  const btnPicker=$('edit-buttonColor'),btnHex=$('buttonColorHex');
  btnPicker.addEventListener('input',()=>{btnHex.value=btnPicker.value.toUpperCase();});
  btnHex.addEventListener('input',()=>{let v=btnHex.value.trim();if(!v.startsWith('#'))v='#'+v;if(/^#[0-9a-f]{6}$/i.test(v))btnPicker.value=v;});
- const slugInput=$('formSlug');
- if(!slugInput.readOnly){slugInput.addEventListener('blur',()=>{slugInput.value=slugify(slugInput.value);});const titleInput=editor.querySelector('[name=title]');titleInput.addEventListener('input',()=>{if(!slugInput.dataset.manual)slugInput.value=slugify(titleInput.value);});slugInput.addEventListener('input',()=>{slugInput.dataset.manual='1';});slugInput.value=slugify(titleInput.value);}
  const picker=$('edit-background'), hex=$('backgroundHex');
  const endPicker=$('gradientEnd'),endHex=$('gradientEndHex');
  const startPicker=$('gradientStartPicker'),startHex=$('gradientStartHex');
@@ -669,13 +650,7 @@ $('formSettings').onsubmit = async event => {
   $('editorMessage').textContent = 'Adicione pelo menos uma pergunta e preencha os textos dos botões, quando houver.';
   return;
  }
- const requestedSlug=slugify(fields.get('formSlug'));
- if(!requestedSlug){$('editorMessage').textContent='Informe o nome do endereço do formulário.';return;}
- const duplicate = Object.entries(forms).some(([id, saved]) => id !== editingFormId &&
-  slugify(saved.slug || saved.title || id) === requestedSlug);
- if(duplicate){$('editorMessage').textContent='Este endereço já pertence a outro formulário. Escolha outro nome.';return;}
- // Mantém o ID existente, mesmo que seja um UUID; apenas o endereço público muda.
- const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),slug:requestedSlug,
+ const draft = {...(forms[editingFormId] ?? {}),title:fields.get('title').trim(),
   buttonColor:fields.get('buttonColor'),
   cover:editorBanner,background:fields.get('background'),backgroundMode:fields.get('backgroundMode'),gradientEnd:fields.get('gradientEnd'),gradientAngle:Number(fields.get('gradientAngle')),extendBanner:fields.get('extendBanner')==='on',bannerGlow:fields.get('bannerGlow')==='on',imageHeader:true,
   custom:!editorLegacy,next:'Próxima',back:'Voltar',send:'Enviar formulário'};
@@ -776,7 +751,7 @@ async function logout(){
  }catch(err){alert(err.message);}
 }
 function showDashboard(){activePage='dashboard';$('dashboard').classList.remove('hidden');$('formPage').classList.add('hidden');renderLeads();loadLeads();}
-if(legacyQueryFormId !== null || (requestedPathSlug && requestedPathSlug!=='index.html')){
+if(publicFormId !== null){
  $('loginView').style.display='none';
  $('appView').style.display='block';
  document.querySelector('.topbar').style.display='none';
