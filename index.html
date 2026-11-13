@@ -405,7 +405,7 @@ function renderFormEditor(draft){
   if(/^#?[0-9a-f]{6}$/i.test(hex.value)) picker.value='#'+hex.value.replace('#','');
  };
   $('backgroundMode').value=draft.backgroundMode||'solid';
-  const previewAppearance=()=>{const a=$('appearancePreview');if(a)a.style.background=$('backgroundMode').value==='gradient'?`linear-gradient(${$('[name=gradientAngle]').value}deg, ${picker.value}, ${$('gradientEnd').value})`:picker.value;};
+  const previewAppearance=()=>{const a=$('appearancePreview');if(a)a.style.background=$('backgroundMode').value==='gradient'?`linear-gradient(${editor.querySelector('[name=gradientAngle]').value}deg, ${picker.value}, ${$('gradientEnd').value})`:picker.value;};
   editor.querySelectorAll('[name=backgroundMode],[name=gradientEnd],[name=gradientAngle],#edit-background,#backgroundHex').forEach(el=>el.addEventListener('input',previewAppearance));previewAppearance();
   updateBannerPreview();
  const uploader=$('bannerUpload'), remove=$('removeBanner');
