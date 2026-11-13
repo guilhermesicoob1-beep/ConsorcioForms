@@ -207,6 +207,91 @@ body.crm-dark .crm-fields-panel .crm-fields-head h3{color:#e8f2f0!important}
 body.crm-dark .crm-fields-panel .crm-fields-note{background:#102326}
 @media(max-width:620px){.crm-fields-panel{padding:15px!important}.crm-fields-panel .crm-column-row{flex-wrap:wrap!important}.crm-fields-panel .crm-column-name{flex:1 1 calc(100% - 45px)}.crm-fields-panel .crm-enabled-label{margin-left:24px}.crm-fields-panel .crm-row-actions{margin-left:auto}.crm-fields-panel .crm-fields-head{display:block}}
 
+
+/* V19 — efeitos do formulário também em telas touch/mobile */
+@keyframes crm-mobile-orbit{to{transform:rotate(360deg)}}
+@media (max-width: 720px), (hover: none) and (pointer: coarse){
+  body.public-form-active .form-page .form-card{
+    position:relative!important;isolation:isolate!important;overflow:visible!important;
+    box-shadow:0 18px 54px #0003,0 0 22px color-mix(in srgb,var(--form-accent,#00AE9D) 19%,transparent),inset 0 1px #ffffff1b!important;
+  }
+  body.public-form-active .form-page .form-card::before,
+  body.public-form-active .form-page .form-card::after{
+    content:''!important;display:block!important;position:absolute!important;pointer-events:none!important;
+    animation:crm-mobile-orbit 7s linear infinite!important;
+    transform-origin:center center!important;
+    will-change:transform;
+  }
+  body.public-form-active .form-page .form-card::before{
+    inset:-2px!important;border-radius:inherit!important;z-index:-1!important;
+    background:conic-gradient(from 0deg,transparent 0deg,transparent 52deg,var(--form-accent,#00AE9D) 88deg,transparent 128deg,transparent 210deg,color-mix(in srgb,var(--form-accent,#00AE9D) 78%,white) 255deg,transparent 295deg)!important;
+    padding:2px!important;
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)!important;
+    -webkit-mask-composite:xor!important;
+    mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)!important;
+    mask-composite:exclude!important;
+    opacity:1!important;
+  }
+  body.public-form-active .form-page .form-card::after{
+    inset:-5px!important;border-radius:inherit!important;z-index:-2!important;
+    background:conic-gradient(from 0deg,transparent 0deg,transparent 50deg,color-mix(in srgb,var(--form-accent,#00AE9D) 65%,transparent) 88deg,transparent 135deg,transparent 210deg,color-mix(in srgb,var(--form-accent,#00AE9D) 48%,transparent) 255deg,transparent 300deg)!important;
+    filter:blur(15px)!important;opacity:.9!important;
+  }
+  body.public-form-active .form-page .primary,
+  body.public-form-active .form-page .choice{
+    transition:transform .22s ease,box-shadow .22s ease,filter .22s ease!important;
+  }
+  body.public-form-active .form-page .primary:active,
+  body.public-form-active .form-page .primary:focus-visible,
+  body.public-form-active .form-page .choice:active,
+  body.public-form-active .form-page .choice:focus-within{
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--form-accent,#00AE9D) 55%,transparent),0 0 20px color-mix(in srgb,var(--form-accent,#00AE9D) 40%,transparent)!important;
+    filter:brightness(1.07);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+ body.public-form-active .form-page .form-card::before,
+ body.public-form-active .form-page .form-card::after{animation:none!important;will-change:auto!important}
+}
+
+
+/* V20 — aparência do formulário aprovada: banner independente + cartão neon.
+   Somente a página pública; nenhuma cor é imposta ao editor/admin. */
+body.public-form-active .form-page{max-width:760px!important}
+body.public-form-active .form-page .public-banner{display:block!important;width:100%!important;max-height:none!important;object-fit:contain!important;border-radius:22px!important;margin:0 auto 28px!important}
+body.public-form-active .form-page .form-card{
+  border-radius:32px!important;
+  padding:clamp(28px,6vw,58px)!important;
+  background:var(--form-panel-bg)!important;
+  box-shadow:0 25px 65px #0003,inset 0 1px #ffffff1b,0 0 28px color-mix(in srgb,var(--form-accent) 17%,transparent)!important;
+}
+body.public-form-active .form-page .form-card::before{border-radius:inherit!important}
+body.public-form-active .form-page .form-card::after{border-radius:inherit!important;filter:blur(19px)!important}
+body.public-form-active .form-card .public-card-heading{margin:0 0 28px!important}
+body.public-form-active .form-card .public-card-heading h1{font-size:clamp(28px,5vw,44px);line-height:1.13;letter-spacing:-.04em;margin:0 0 12px;color:var(--form-text)!important;font-weight:750}
+body.public-form-active .form-card .public-card-heading p{font-size:clamp(14px,2.6vw,17px);line-height:1.5;margin:0;color:var(--form-muted)!important}
+body.public-form-active .form-page .field>label,body.public-form-active .form-page .field strong{font-size:clamp(16px,2.5vw,20px);line-height:1.45;font-weight:650}
+body.public-form-active .form-page .field input:not([type=radio]):not([type=checkbox]),body.public-form-active .form-page .field select,body.public-form-active .form-page .field textarea{
+  width:100%;min-height:60px;border-radius:19px!important;padding:15px 19px!important;
+  box-shadow:inset 0 1px 2px #ffffff12,0 2px 12px #0001!important;
+  font-size:16px!important;transition:border-color .2s,box-shadow .2s!important;
+}
+body.public-form-active .form-page .field input:focus,body.public-form-active .form-page .field select:focus,body.public-form-active .form-page .field textarea:focus{outline:none!important;border-color:var(--form-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--form-accent) 23%,transparent)!important}
+body.public-form-active .form-page .choice{min-height:52px;border-radius:17px!important;padding:14px 18px!important;font-size:15px!important}
+body.public-form-active .form-page .actions{display:flex;gap:12px;align-items:stretch}
+body.public-form-active .form-page .actions .primary{flex:1;min-height:60px;border-radius:999px!important;font-size:17px;font-weight:750;letter-spacing:-.01em;box-shadow:0 6px 24px color-mix(in srgb,var(--button-color) 24%,transparent)!important}
+body.public-form-active .form-page .actions .secondary{min-height:60px;border-radius:999px!important}
+body.public-form-active .form-page .hint[aria-live]{font-size:12px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 18px!important}
+@media(max-width:600px){
+ body.public-form-active #appView>.wrap{padding:20px 12px 36px!important}
+ body.public-form-active .form-page{padding:0 3px 24px!important}
+ body.public-form-active .form-page .public-banner{border-radius:16px!important;margin-bottom:24px!important}
+ body.public-form-active .form-page .form-card{padding:30px 22px!important;border-radius:26px!important}
+ body.public-form-active .form-card .public-card-heading{margin-bottom:23px!important}
+ body.public-form-active .form-page .field input:not([type=radio]):not([type=checkbox]),body.public-form-active .form-page .field select{min-height:58px}
+ body.public-form-active .form-page .actions .primary{min-height:58px}
+}
+
 </style>
 </head>
 <body>
@@ -934,6 +1019,7 @@ if(publicFormId !== null){
 }
 function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden');$('formPage').classList.remove('hidden');$('formPage').innerHTML=`
  <div class="form-page"><header class="form-hero"><a class="secondary small" style="display:inline-block;margin-bottom:16px" href="?admin">Área administrativa</a><div class="brand">CONSÓRCIO</div><h1>${esc(config.title)}</h1><p>${esc(config.subtitle)}</p></header><div class="form-card">
+ <div class="public-card-heading"><h1>${esc(config.title || "Fale com a gente")}</h1><p>${esc(config.subtitle || "Informe seus dados e conte seu interesse.")}</p></div>
  <form id="leadForm">
   <div class="section"><div class="field"><label>Nome completo *</label><input name="name" required placeholder="Digite seu nome"></div>
   <div class="field"><label>Telefone com DDD *</label><div class="two"><input name="ddd" inputmode="numeric" maxlength="2" pattern="[0-9]{2}" placeholder="DDD" required aria-label="DDD"><input name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{8,9}" placeholder="Número de telefone" required aria-label="Número de telefone"></div><div class="hint">Informe o DDD separado do número.</div></div></div>
