@@ -974,19 +974,23 @@ function setupQuestions(form){
 function moneyNumber(v){return Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0;}
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});}
 function customLeadRow(answers){
+ // Save the actual answer of each question mapped to a CRM field.
+ // Custom button labels must not be discarded by a fixed-value whitelist.
  const values = leadValues(answers);
- const phone = (values.phone ?? '').replace(/[^0-9]/g,'').replace(/^55(?=[0-9]{10,11}$)/,'');
+ const phone = String(values.phone ?? '').replace(/[^0-9]/g,'').replace(/^55(?=[0-9]{10,11}$)/,'');
  const validPhone = /^[0-9]{10,11}$/.test(phone);
  const price = moneyNumber(values.value);
  const entry = moneyNumber(values.entry);
- const canonical = (value, list)=>list.find(item=>item.toLowerCase()===value?.toLowerCase()) ?? null;
- const urgency = canonical(values.urgency,['Urgente','Compra planejada','Planejamento']);
- return {name:values.name || null,ddd:validPhone?phone.slice(0,2):null,phone:validPhone?phone.slice(2):null,
-  asset:values.asset || null,asset_price:price>0?price:null,entry_amount:entry,
-  has_entry:values.entry===undefined?null:entry>0?'Sim':'Não',
+ const clean = key => String(values[key] ?? '').trim() || null;
+ const urgency = clean('urgency');
+ return {
+  name:clean('name'), ddd:validPhone?phone.slice(0,2):null,
+  phone:validPhone?phone.slice(2):null,
+  asset:clean('asset'), asset_price:price>0?price:null,
+  entry_amount:entry, has_entry:values.entry===undefined?null:entry>0?'Sim':'Não',
   urgency:urgency==='Compra planejada'?'Planejamento':urgency,
-  knows_consorcio:canonical(values.knows,['Sim','Não']),
-  intent:canonical(values.intent,['Quero contratar','Estou pesquisando']),status:'Novo'};
+  knows_consorcio:clean('knows'), intent:clean('intent'), status:'Novo'
+ };
 }
 function legacyLeadRow(fd){
  const amount=moneyNumber(fd.get('value'));
