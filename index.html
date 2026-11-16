@@ -1245,7 +1245,10 @@ function setupQuestions(form){
  });
 
  form.addEventListener('change', event=>{
-  if(event.target.type==='radio' && current.contains(event.target)) form.requestSubmit();
+  if(event.target.type==='radio' && current.contains(event.target)){
+   const submitButton = $('nextQuestion');
+   if(!submitButton.disabled) form.requestSubmit(submitButton);
+  }
  });
  form.noValidate = true;
  form.addEventListener('submit', event => {
@@ -1313,7 +1316,7 @@ function legacyLeadRow(fd){
 }
 async function submitLead(e, answers){
  e.preventDefault();const f=e.target,fd=new FormData(f);
- const submitButton=f.querySelector('button[type="submit"],button:not([type])');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
+ const submitButton=$('nextQuestion');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
   const row=config.custom ? customLeadRow(answers) : legacyLeadRow(fd);
