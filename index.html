@@ -1066,7 +1066,7 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   <div class="field"><label>Qual seu interesse em contratar? *</label><div class="choices"><label class="choice"><input type="radio" name="intent" value="Quero contratar" required> Quero contratar</label><label class="choice"><input type="radio" name="intent" value="Estou pesquisando" required> Estou pesquisando</label></div></div></div>
   <div class="actions" style="margin-top:20px">
    <button type="button" class="secondary" id="backQuestion">Voltar</button>
-   <button type="button" class="primary" id="nextQuestion">Próxima</button>
+   <button type="submit" class="primary" id="nextQuestion">Próxima</button>
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
  const form = $('leadForm');
@@ -1207,7 +1207,7 @@ function setupQuestions(form){
  $('noEntry').onclick = () => {
   $('entryValue').dataset.none = 'true';
   $('entryValue').value = '';
-  advanceQuestion(false);
+  form.requestSubmit();
  };
  $('entryValue').oninput = () => delete $('entryValue').dataset.none;
  form.querySelectorAll('[name="hasEntry"]').forEach(input => input.addEventListener('change',()=>{
@@ -1248,15 +1248,13 @@ function setupQuestions(form){
   if(event.target.type==='radio' && current.contains(event.target)){
    const submitButton = $('nextQuestion');
    if(submitButton.disabled) return;
-   if(nextQuestion()) advanceQuestion(false);
+   if(nextQuestion()) form.requestSubmit();
    else submitButton.textContent = config.send;
   }
  });
  form.noValidate = true;
- form.addEventListener('submit', event => event.preventDefault());
- $('nextQuestion').addEventListener('click', () => advanceQuestion(true));
-
- function advanceQuestion(confirmSend){
+ form.addEventListener('submit', event => {
+  event.preventDefault();
   if($('nextQuestion').disabled) return;
   for(const input of current.querySelectorAll('input,select')){
    if(input.id === 'entryValue' && input.dataset.none) continue;
@@ -1271,12 +1269,12 @@ function setupQuestions(form){
   }
   const next = nextQuestion();
   if(!next){
-   if(!confirmSend){
+   if(event.submitter !== $('nextQuestion')){
     $('nextQuestion').textContent = config.send;
     $('nextQuestion').focus();
     return;
    }
-   submitLead(form, answered().map(item=>({
+   submitLead(event, answered().map(item=>({
     question:item.question.title, answer:item.answer, role:item.question.role || inferCrmRole(item.question.title)
    })));
    return;
@@ -1284,7 +1282,7 @@ function setupQuestions(form){
   history.push(current);
   current = next;
   renderQuestion(true);
- }
+ });
 
  renderQuestion(false);
 }
@@ -1318,8 +1316,8 @@ function legacyLeadRow(fd){
 
  return {name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'}; 
 }
-async function submitLead(form, answers){
- const fd=new FormData(form);
+async function submitLead(e, answers){
+ e.preventDefault();const f=e.target,fd=new FormData(f);
  const submitButton=$('nextQuestion');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
