@@ -324,7 +324,29 @@ body.public-form-active .form-page .form-card::after {
   body.public-form-active::before {animation:none}
 }
 
+
+body.public-form-active .form-page .choice:has(input:checked){
+  background:color-mix(in srgb,var(--form-accent,#00AE9D) 32%,var(--form-panel-bg,#003641))!important;
+  border-color:var(--form-accent,#00AE9D)!important;
+  box-shadow:inset 0 0 0 2px var(--form-accent,#00AE9D)!important;
+  font-weight:700;
+}
+body.public-form-active .form-page .choice:has(input:checked)::after{
+  content:'✓';
+  flex:none;
+  display:grid;
+  place-items:center;
+  margin-inline-start:auto;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:var(--form-text,#fff);
+  color:var(--form-panel-bg,#003641);
+  font:700 16px/1 system-ui,sans-serif;
+}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>.import-panel{margin:16px 0;padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--white)}.import-panel .actions{margin-top:13px}.variable-chip{padding:7px 10px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:9px;font-size:12px}.variable-grid{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.variable-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0}.variable-row input{min-width:0;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--white);color:var(--text)}@media(max-width:600px){.variable-row{grid-template-columns:1fr 1fr}.variable-row button{grid-column:1/-1}}</style>
 </head>
 <body>
 <section id="loginView">
@@ -354,7 +376,7 @@ body.public-form-active .form-page .form-card::after {
    <div class="panel" style="margin-bottom:14px"><b>Relatório de formulários</b><p class="muted" style="margin-bottom:0">Os indicadores são atualizados automaticamente conforme os formulários são enviados e os leads são movimentados.</p></div>
    <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Defina a prioridade dos critérios e a direção da ordenação.</div></div></div>
    <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
-   <div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
+   <div class="import-panel"><div class="heading"><div><b>Importar leads do Excel</b><p class="muted" style="margin:6px 0 0">Baixe o modelo, preencha os contatos e importe uma planilha .xlsx ou .xls.</p></div></div><div class="actions"><button class="secondary" type="button" onclick="downloadLeadTemplate()">↓ Baixar modelo Excel</button><button class="primary" type="button" onclick="$('leadExcelFile').click()">↑ Importar planilha</button><input type="file" id="leadExcelFile" accept=".xlsx,.xls" hidden onchange="importLeadExcel(this)"></div><p id="excelImportStatus" class="hint" role="status"></p></div><div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
    <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th id="dynamicLeadHeaders" style="display:none"></th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
   </div>
   <div id="formPage" class="hidden"></div>
@@ -363,7 +385,7 @@ body.public-form-active .form-page .form-card::after {
 <div id="modalRoot"></div>
 <dialog id="formList" class="form-card" aria-labelledby="formListTitle" style="max-height:85vh;overflow:auto">
  <h2 id="formListTitle">Formulários</h2><p class="hint">Você pode excluir qualquer formulário, inclusive o principal. Os leads já recebidos são preservados.</p>
- <div class="editor-tabs"><button type="button" class="editor-tab active" onclick="switchManagementTab('forms')" id="tabForms">Formulários</button><button type="button" class="editor-tab" onclick="switchManagementTab('messages')" id="tabMessages">Respostas rápidas</button></div><div id="publishedForms"></div><div id="quickRepliesPanel" class="hidden"><p class="muted">Crie mensagens para selecionar no atendimento de cada lead. Use {nome}, {bem}, {valor}, {urgencia} e {interesse} para personalizar.</p><div id="quickRepliesList"></div><button class="secondary" type="button" onclick="editQuickReply()">+ Nova resposta rápida</button></div>
+ <div class="editor-tabs"><button type="button" class="editor-tab active" onclick="switchManagementTab('forms')" id="tabForms">Formulários</button><button type="button" class="editor-tab" onclick="switchManagementTab('messages')" id="tabMessages">Respostas rápidas</button></div><div id="publishedForms"></div><div id="quickRepliesPanel" class="hidden"><p class="muted">Crie mensagens para selecionar no atendimento de cada lead. Use {nome}, {bem}, {valor}, {urgencia} e {interesse} para personalizar.</p><div id="quickRepliesList"></div><div class="import-panel"><b>Variáveis personalizadas</b><p class="hint">Crie variáveis para usar nas mensagens, como {consultor} ou {agencia}. Você pode definir um valor fixo ou vincular à resposta de uma pergunta do formulário.</p><div id="customVariablesList"></div><button class="secondary small" type="button" onclick="addReplyVariable()">+ Criar variável</button></div><button class="secondary" type="button" onclick="editQuickReply()">+ Nova resposta rápida</button></div>
  <div class="actions"><button class="secondary" id="closeFormList" type="button">Fechar</button><button class="primary" id="createFormButton" type="button">Criar formulário</button></div>
 </dialog>
 <dialog id="formEditor" class="form-card" aria-labelledby="formEditorTitle" style="max-height:85vh;overflow:auto">
@@ -1066,7 +1088,7 @@ function showLeadForm(){activePage='form';$('dashboard').classList.add('hidden')
   <div class="field"><label>Qual seu interesse em contratar? *</label><div class="choices"><label class="choice"><input type="radio" name="intent" value="Quero contratar" required> Quero contratar</label><label class="choice"><input type="radio" name="intent" value="Estou pesquisando" required> Estou pesquisando</label></div></div></div>
   <div class="actions" style="margin-top:20px">
    <button type="button" class="secondary" id="backQuestion">Voltar</button>
-   <button type="submit" class="primary" id="nextQuestion">Próxima</button>
+   <button type="button" class="primary" id="nextQuestion">Próxima</button>
   </div>
  </form></div><div class="footer-note">Atendimento sujeito à análise e às condições do grupo de consórcio.</div></div>`;
  const form = $('leadForm');
@@ -1207,7 +1229,7 @@ function setupQuestions(form){
  $('noEntry').onclick = () => {
   $('entryValue').dataset.none = 'true';
   $('entryValue').value = '';
-  form.requestSubmit();
+  advanceQuestion(false);
  };
  $('entryValue').oninput = () => delete $('entryValue').dataset.none;
  form.querySelectorAll('[name="hasEntry"]').forEach(input => input.addEventListener('change',()=>{
@@ -1248,13 +1270,15 @@ function setupQuestions(form){
   if(event.target.type==='radio' && current.contains(event.target)){
    const submitButton = $('nextQuestion');
    if(submitButton.disabled) return;
-   if(nextQuestion()) form.requestSubmit();
+   if(nextQuestion()) advanceQuestion(false);
    else submitButton.textContent = config.send;
   }
  });
  form.noValidate = true;
- form.addEventListener('submit', event => {
-  event.preventDefault();
+ form.addEventListener('submit', event => event.preventDefault());
+ $('nextQuestion').addEventListener('click', () => advanceQuestion(true));
+
+ function advanceQuestion(confirmSend){
   if($('nextQuestion').disabled) return;
   for(const input of current.querySelectorAll('input,select')){
    if(input.id === 'entryValue' && input.dataset.none) continue;
@@ -1269,12 +1293,12 @@ function setupQuestions(form){
   }
   const next = nextQuestion();
   if(!next){
-   if(event.submitter !== $('nextQuestion')){
+   if(!confirmSend){
     $('nextQuestion').textContent = config.send;
     $('nextQuestion').focus();
     return;
    }
-   submitLead(event, answered().map(item=>({
+   submitLead(form, answered().map(item=>({
     question:item.question.title, answer:item.answer, role:item.question.role || inferCrmRole(item.question.title)
    })));
    return;
@@ -1282,7 +1306,7 @@ function setupQuestions(form){
   history.push(current);
   current = next;
   renderQuestion(true);
- });
+ }
 
  renderQuestion(false);
 }
@@ -1316,8 +1340,8 @@ function legacyLeadRow(fd){
 
  return {name:lead.name,ddd:lead.ddd,phone:lead.phone,asset:fd.get('asset'),asset_other:fd.get('asset')==='Outro'?lead.asset:null,asset_price:lead.value,has_entry:lead.hasEntry,entry_amount:lead.entry,urgency:lead.urgency==='Compra planejada'?'Planejamento':'Urgente',knows_consorcio:lead.knows,intent:lead.intent,status:'Novo'}; 
 }
-async function submitLead(e, answers){
- e.preventDefault();const f=e.target,fd=new FormData(f);
+async function submitLead(form, answers){
+ const fd=new FormData(form);
  const submitButton=$('nextQuestion');if(submitButton){submitButton.disabled=true;submitButton.textContent='Enviando...';$('backQuestion').disabled=true;}
  try{
   if(!supabaseConfigured()) throw new Error('Informe a URL real do projeto na constante SUPABASE_URL (Supabase > Project Settings > API).');
@@ -1418,15 +1442,27 @@ function persistSort(){localStorage.setItem(sortStorage,JSON.stringify(sortRules
 function resetSort(){sortRules=[{field:'urgency',direction:'asc'},{field:'asset',direction:'asc'},{field:'created',direction:'desc'}];persistSort();}
 function moveSort(i,delta){const j=i+delta;if(j<0||j>=sortRules.length)return;[sortRules[i],sortRules[j]]=[sortRules[j],sortRules[i]];persistSort();}
 function renderSortRules(){const el=$('sortRules');if(!el)return;el.innerHTML=sortRules.map((r,i)=>`<div class="sort-row"><span class="sort-number">${i+1}</span><select aria-label="Critério ${i+1}" onchange="sortRules[${i}].field=this.value;persistSort()">${Object.entries(sortFields).map(([key,label])=>`<option value="${key}" ${r.field===key?'selected':''}>${label}</option>`).join('')}</select><select aria-label="Direção ${i+1}" onchange="sortRules[${i}].direction=this.value;persistSort()"><option value="asc" ${r.direction==='asc'?'selected':''}>Crescente ↑</option><option value="desc" ${r.direction==='desc'?'selected':''}>Decrescente ↓</option></select><button class="secondary small" onclick="moveSort(${i},-1)" title="Subir">↑</button><button class="secondary small" onclick="moveSort(${i},1)" title="Descer">↓</button><button class="danger small" onclick="sortRules.splice(${i},1);persistSort()" title="Remover">×</button></div>`).join('')+`<button class="secondary small" onclick="sortRules.push({field:'created',direction:'desc'});persistSort()">+ Adicionar critério</button>`;}
-function switchManagementTab(tab){$('publishedForms').classList.toggle('hidden',tab!=='forms');$('quickRepliesPanel').classList.toggle('hidden',tab!=='messages');$('tabForms').classList.toggle('active',tab==='forms');$('tabMessages').classList.toggle('active',tab==='messages');$('createFormButton').classList.toggle('hidden',tab!=='forms');if(tab==='messages')renderQuickReplies();}
+function switchManagementTab(tab){$('publishedForms').classList.toggle('hidden',tab!=='forms');$('quickRepliesPanel').classList.toggle('hidden',tab!=='messages');$('tabForms').classList.toggle('active',tab==='forms');$('tabMessages').classList.toggle('active',tab==='messages');$('createFormButton').classList.toggle('hidden',tab!=='forms');if(tab==='messages'){renderQuickReplies();renderCustomVariables();}}
 function renderQuickReplies(){$('quickRepliesList').innerHTML=quickReplies.map((r,i)=>`<div class="reply-item"><strong>${esc(r.title)}</strong><p class="muted">${esc(r.body).slice(0,180)}</p><div class="actions"><button class="secondary small" onclick="editQuickReply(${i})">Editar</button><button class="danger small" onclick="deleteQuickReply(${i})">Excluir</button></div></div>`).join('')||'<p class="muted">Nenhuma resposta rápida cadastrada.</p>';}
-function editQuickReply(i=-1){const r=quickReplies[i]||{title:'',body:''};$('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><h2>${i<0?'Nova':'Editar'} resposta rápida</h2><div class="field"><label>Nome do template</label><input id="replyTitle" maxlength="90" value="${esc(r.title)}" placeholder="Ex.: Primeiro contato"></div><div class="field"><label>Mensagem</label><textarea id="replyBody" rows="8" placeholder="Olá, {nome}!">${esc(r.body)}</textarea></div><p class="hint">Variáveis: {nome}, {bem}, {valor}, {urgencia}, {interesse}</p><div class="actions"><button class="primary" onclick="saveQuickReply(${i})">Salvar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div></div></div>`;}
+function editQuickReply(i=-1){const r=quickReplies[i]||{title:'',body:''};$('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><h2>${i<0?'Nova':'Editar'} resposta rápida</h2><div class="field"><label>Nome do template</label><input id="replyTitle" maxlength="90" value="${esc(r.title)}" placeholder="Ex.: Primeiro contato"></div><div class="field"><label>Mensagem</label><textarea id="replyBody" rows="8" placeholder="Olá, {nome}!">${esc(r.body)}</textarea></div><p class="hint">Clique em uma variável para inserir no texto:</p><div class="variable-grid" id="replyVariableChips"></div><div class="actions"><button class="primary" onclick="saveQuickReply(${i})">Salvar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div></div></div>`;renderReplyChips();}
+const variableStorage='crm_custom_message_variables_v1';
+let customVariables=JSON.parse(localStorage.getItem(variableStorage)||'[]');
+function persistVariables(){localStorage.setItem(variableStorage,JSON.stringify(customVariables));renderCustomVariables();}
+function addReplyVariable(){customVariables.push({key:'',value:''});renderCustomVariables();}
+function updateReplyVariable(i,field,value){customVariables[i][field]=value.trim();localStorage.setItem(variableStorage,JSON.stringify(customVariables));}
+function removeReplyVariable(i){customVariables.splice(i,1);persistVariables();}
+function renderCustomVariables(){const root=$('customVariablesList');if(!root)return;root.innerHTML=customVariables.map((v,i)=>`<div class="variable-row"><input aria-label="Nome da variável" placeholder="Nome: consultor" value="${esc(v.key)}" oninput="updateReplyVariable(${i},'key',this.value)"><input aria-label="Valor ou campo" placeholder="Valor ou campo: nome" value="${esc(v.value)}" oninput="updateReplyVariable(${i},'value',this.value)"><button class="danger small" onclick="removeReplyVariable(${i})">Excluir</button></div>`).join('');}
+function renderReplyChips(){const keys=['nome','bem','valor','urgencia','interesse',...customVariables.map(v=>v.key).filter(v=>/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v))];$('replyVariableChips').innerHTML=[...new Set(keys)].map(k=>`<button type="button" class="variable-chip" onclick="insertReplyVariable('${k}')">{${k}}</button>`).join('');}
+function insertReplyVariable(key){const el=$('replyBody');const start=el.selectionStart,end=el.selectionEnd;el.setRangeText('{'+key+'}',start,end,'end');el.focus();}
 function saveQuickReply(i){const title=$('replyTitle').value.trim(),body=$('replyBody').value.trim();if(!title||!body){alert('Preencha o nome e a mensagem.');return;}if(i<0)quickReplies.push({title,body});else quickReplies[i]={title,body};localStorage.setItem(replyStorage,JSON.stringify(quickReplies));closeModal();renderQuickReplies();}
 function deleteQuickReply(i){if(!confirm('Excluir esta resposta rápida?'))return;quickReplies.splice(i,1);localStorage.setItem(replyStorage,JSON.stringify(quickReplies));renderQuickReplies();}
-function formatReply(body,l){return body.replace(/\{(nome|bem|valor|urgencia|interesse)\}/gi,(_,key)=>({nome:l.name.split(' ')[0],bem:l.asset||'',valor:money(l.value),urgencia:l.urgency||'',interesse:l.intent||''})[key.toLowerCase()]);}
+function formatReply(body,l){const standard={nome:(l.name||'').split(' ')[0],bem:l.asset||'',valor:money(l.value),urgencia:l.urgency||'',interesse:l.intent||''};const vars={...standard};for(const v of customVariables){if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v.key))continue;const field=String(v.value||'').trim();const answer=(l.answers||[]).find(a=>normalizeQuestionLabel(a.question)===normalizeQuestionLabel(field)||a.role===field);vars[v.key.toLowerCase()]=standard[field.toLowerCase()]??l[field]??answer?.answer??field;}return body.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g,(match,key)=>Object.hasOwn(vars,key.toLowerCase())?String(vars[key.toLowerCase()]??''):match);}
 function populateLeadMessages(l){const sel=$('leadMessageTemplate');if(!sel)return;sel.innerHTML='<option value="">Selecione uma resposta rápida (opcional)</option>'+quickReplies.map((r,i)=>`<option value="${i}">${esc(r.title)}</option>`).join('');}
 function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.value;if(index!==undefined&&index!==''&&quickReplies[Number(index)])return formatReply(quickReplies[Number(index)].body,l);return '';}
 function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l)||'Nenhuma resposta rápida selecionada. O WhatsApp abrirá sem mensagem preenchida.';}
+const excelColumns=['Nome','DDD','Telefone','Bem desejado','Valor do bem','Valor da entrada','Urgência','Conhece consórcio','Interesse','Formulário'];
+function downloadLeadTemplate(){if(typeof XLSX==='undefined'){alert('Biblioteca Excel indisponível. Verifique sua conexão.');return;}const example=['Maria Silva','31','999999999','Automóvel',50000,5000,'Compra planejada','Sim','Quero contratar','principal'];const ws=XLSX.utils.aoa_to_sheet([excelColumns,example]);ws['!cols']=excelColumns.map(x=>({wch:Math.max(x.length+4,18)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads');XLSX.writeFile(wb,'modelo_importacao_leads.xlsx');}
+async function importLeadExcel(input){const status=$('excelImportStatus');const file=input.files?.[0];if(!file)return;status.textContent='Lendo planilha...';try{if(typeof XLSX==='undefined')throw Error('Biblioteca Excel indisponível. Verifique a conexão.');const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});if(!rows.length)throw Error('A planilha está vazia.');const normalized=rows.map((r,i)=>{const get=k=>String(r[k]??'').trim();const name=get('Nome'),digits=(get('DDD')+get('Telefone')).replace(/\D/g,'');if(!name||digits.length<10||digits.length>11)throw Error('Linha '+(i+2)+': informe nome e telefone com DDD válido.');const formId=get('Formulário')||'principal';if(!Object.hasOwn(forms,formId))throw Error('Linha '+(i+2)+': formulário "'+formId+'" não existe. Use o ID de um formulário cadastrado ou principal.');const entry=moneyNumber(get('Valor da entrada'));return {name,ddd:digits.slice(0,2),phone:digits.slice(2),asset:get('Bem desejado')||'Não informado',asset_price:moneyNumber(get('Valor do bem'))||null,entry_amount:entry,has_entry:entry>0?'Sim':'Não',urgency:get('Urgência')==='Compra planejada'?'Planejamento':get('Urgência'),knows_consorcio:get('Conhece consórcio'),intent:get('Interesse'),status:'Novo',form_id:formId};});if(normalized.length>500)throw Error('Importe no máximo 500 leads por arquivo.');if(!confirm('Importar '+normalized.length+' lead(s) para o CRM?')){status.textContent='Importação cancelada.';return;}status.textContent='Enviando '+normalized.length+' lead(s)...';let done=0;for(let i=0;i<normalized.length;i+=50){const chunk=normalized.slice(i,i+50);const res=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(chunk)});if(!res.ok)throw Error(supabaseError(res.status,await res.text()));done+=chunk.length;status.textContent=done+' de '+normalized.length+' leads importados.';}await loadLeads();status.textContent='Importação concluída: '+done+' leads adicionados.';}catch(err){status.textContent='Erro na importação: '+err.message;}finally{input.value='';}}
 renderSortRules();
 
 setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
