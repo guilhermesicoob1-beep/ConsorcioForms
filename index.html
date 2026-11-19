@@ -376,7 +376,7 @@ body.public-form-active .form-page .choice:has(input:checked)::after{
    <div class="panel" style="margin-bottom:14px"><b>Relatório de formulários</b><p class="muted" style="margin-bottom:0">Os indicadores são atualizados automaticamente conforme os formulários são enviados e os leads são movimentados.</p></div>
    <div class="heading" style="margin:22px 0 12px"><div><h2 style="font-size:19px;margin:0">Leads recebidos</h2><div class="muted">Defina a prioridade dos critérios e a direção da ordenação.</div></div></div>
    <div class="toolbar"><input class="search" id="search" placeholder="Buscar por nome ou telefone..." oninput="renderLeads()"><select id="filterForm" aria-label="Filtrar por formulário" onchange="renderLeads()"><option value="">Todos os formulários</option></select><select id="filter" onchange="renderLeads()"><option value="all">Todos os leads</option><option value="new">Novos</option><option value="responded">Em atendimento</option><option value="closed">Fechados</option></select></div>
-   <div class="import-panel"><div class="heading"><div><b>Importar leads do Excel</b><p class="muted" style="margin:6px 0 0">Baixe o modelo, preencha os contatos e importe uma planilha .xlsx ou .xls.</p></div></div><div class="actions"><button class="secondary" type="button" onclick="downloadLeadTemplate()">↓ Baixar modelo Excel</button><button class="primary" type="button" onclick="$('leadExcelFile').click()">↑ Importar planilha</button><input type="file" id="leadExcelFile" accept=".xlsx,.xls" hidden onchange="importLeadExcel(this)"></div><p id="excelImportStatus" class="hint" role="status"></p></div><div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
+   <div class="import-panel"><div class="heading"><div><b>Importar leads do Excel</b><p class="muted" style="margin:6px 0 0">Baixe o modelo, preencha os contatos e importe uma planilha .xlsx ou .xls.</p></div></div><div class="field" style="max-width:460px"><label for="importTargetForm">Formulário de destino dos leads</label><select id="importTargetForm" aria-label="Selecionar formulário para importar"><option value="">Selecione um formulário</option></select><p class="hint">Todos os leads desta planilha serão vinculados ao formulário escolhido. A coluna Formulário da planilha será ignorada.</p></div><div class="actions"><button class="secondary" type="button" onclick="downloadLeadTemplate()">↓ Baixar modelo Excel</button><button class="primary" type="button" onclick="refreshImportFormSelect();$('leadExcelFile').click()">↑ Importar planilha</button><input type="file" id="leadExcelFile" accept=".xlsx,.xls" hidden onchange="importLeadExcel(this)"></div><p id="excelImportStatus" class="hint" role="status"></p></div><div class="panel sorting-panel"><div class="heading"><div><b>Ordenação personalizada</b><p class="muted">O primeiro critério tem prioridade sobre o segundo, e assim sucessivamente.</p></div><button class="secondary small" onclick="resetSort()">Restaurar</button></div><div id="sortRules"></div></div>
    <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Bem desejado</th><th id="dynamicLeadHeaders" style="display:none"></th><th>Status</th><th>Ações</th></tr></thead><tbody id="leadRows"></tbody></table><div id="empty" class="empty">Nenhum formulário recebido ainda.</div></div>
   </div>
   <div id="formPage" class="hidden"></div>
@@ -1491,41 +1491,94 @@ function populateLeadMessages(l){const sel=$('leadMessageTemplate');if(!sel)retu
 function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.value;if(index!==undefined&&index!==''&&quickReplies[Number(index)])return formatReply(quickReplies[Number(index)].body,l);return '';}
 function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l)||'Nenhuma resposta rápida selecionada. O WhatsApp abrirá sem mensagem preenchida.';}
 const excelColumns=['Nome','DDD','Telefone','Bem desejado','Valor do bem','Valor da entrada','Urgência','Conhece consórcio','Interesse','Formulário'];
+function refreshImportFormSelect(){
+ const sel=$('importTargetForm');if(!sel)return;
+ const previous=sel.value;
+ sel.replaceChildren(new Option('Selecione um formulário',''));
+ for(const [id,form] of Object.entries(forms||{}))sel.add(new Option((form?.title|| (id==='principal'?'Principal':id))+' — '+id,id));
+ if(Object.hasOwn(forms,previous))sel.value=previous;
+}
 function downloadLeadTemplate(){if(typeof XLSX==='undefined'){alert('Biblioteca Excel indisponível. Verifique sua conexão.');return;}const example=['Maria Silva','31','999999999','Automóvel',50000,5000,'Compra planejada','Sim','Quero contratar','principal'];const ws=XLSX.utils.aoa_to_sheet([excelColumns,example]);ws['!cols']=excelColumns.map(x=>({wch:Math.max(x.length+4,18)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads');XLSX.writeFile(wb,'modelo_importacao_leads.xlsx');}
+// Importação tolerante: campos inválidos são descartados individualmente.
 async function importLeadExcel(input){
  const status=$('excelImportStatus'),file=input.files?.[0];if(!file)return;
  status.textContent='Lendo planilha...';
  try{
   if(typeof XLSX==='undefined')throw Error('Biblioteca Excel indisponível. Verifique a conexão.');
   const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});
+  const sheet=wb.Sheets[wb.SheetNames[0]];
+  if(!sheet)throw Error('Nenhuma aba encontrada no arquivo.');
+  const rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
   if(!rows.length)throw Error('A planilha está vazia.');
-  const normalized=[];let ignored=0;
+  refreshImportFormSelect();
+  const targetForm=$('importTargetForm')?.value;
+  if(!targetForm||!Object.hasOwn(forms,targetForm))throw Error('Selecione um formulário de destino antes de importar.');
+  const normalized=[];let ignored=0,discarded=0;
+  const cleanText=v=>String(v??'').trim();
+  const parseAmount=v=>{
+   const str=cleanText(v);if(!str)return null;
+   const compact=str.replace(/\s|R\$/gi,'');
+   if(!/^[+-]?[\d.,]+$/.test(compact))return null;
+   const n=moneyNumber(str);
+   return Number.isFinite(n)&&n>=0?n:null;
+  };
   for(let i=0;i<rows.length;i++){
-   const r=rows[i],get=k=>String(r[k]??'').trim();
-   if(Object.values(r).every(v=>!String(v??'').trim())){ignored++;continue;}
-   const ddd=get('DDD').replace(/\D/g,''),phone=get('Telefone').replace(/\D/g,'');
-   const digits=ddd+phone;
-   // Dados ausentes permanecem vazios. Somente números informados são validados.
-   if(digits && (digits.length<10||digits.length>11))throw Error('Linha '+(i+2)+': telefone informado deve conter DDD e 8 ou 9 dígitos.');
-   const formId=get('Formulário')||'principal';
-   if(!Object.hasOwn(forms,formId))throw Error('Linha '+(i+2)+': formulário "'+formId+'" não existe.');
-   const entry=get('Valor da entrada')?moneyNumber(get('Valor da entrada')):null;
-   normalized.push({name:get('Nome')||null,ddd:digits?digits.slice(0,2):null,phone:digits?digits.slice(2):null,asset:get('Bem desejado')||null,asset_price:get('Valor do bem')?moneyNumber(get('Valor do bem')):null,entry_amount:entry,has_entry:entry===null?null:entry>0?'Sim':'Não',urgency:get('Urgência')||null,knows_consorcio:get('Conhece consórcio')||null,intent:get('Interesse')||null,status:'Novo',form_id:formId});
+   const r=rows[i],get=k=>cleanText(r[k]);
+   if(Object.values(r).every(v=>!cleanText(v))){ignored++;continue;}
+   const name=get('Nome')||null;
+   const rawDdd=get('DDD'),rawPhone=get('Telefone');
+   const ddd=rawDdd.replace(/\D/g,''),phone=rawPhone.replace(/\D/g,'');
+   let digits='';
+   if(!rawDdd&&!rawPhone)digits='';
+   else if(!rawDdd&&/^\d{10,11}$/.test(phone))digits=phone;
+   else if(/^\d{2}$/.test(ddd)&&/^\d{8,9}$/.test(phone))digits=ddd+phone;
+   else discarded++;
+   const formId=targetForm;
+   const price=parseAmount(get('Valor do bem'));
+   const entry=parseAmount(get('Valor da entrada'));
+   if(get('Valor do bem')&&price===null)discarded++;
+   if(get('Valor da entrada')&&entry===null)discarded++;
+   const lead={name,ddd:digits?digits.slice(0,2):null,phone:digits?digits.slice(2):null,
+    asset:get('Bem desejado')||null,asset_price:price,entry_amount:entry,
+    has_entry:entry===null?null:entry>0?'Sim':'Não',urgency:get('Urgência')||null,
+    knows_consorcio:get('Conhece consórcio')||null,intent:get('Interesse')||null,
+    status:'Novo',form_id:formId};
+   // Não cadastrar linhas que só contenham um ID de formulário.
+   if(!name&&!digits&&!lead.asset&&price===null&&entry===null&&!lead.urgency&&!lead.knows_consorcio&&!lead.intent){ignored++;continue;}
+   normalized.push(lead);
   }
-  if(!normalized.length)throw Error('Nenhum lead preenchido para importar.');
+  if(!normalized.length)throw Error('Nenhum lead com dados aproveitáveis foi encontrado.');
   if(normalized.length>500)throw Error('Importe no máximo 500 leads por arquivo.');
-  if(!confirm('Importar '+normalized.length+' lead(s)? Campos não preenchidos permanecerão vazios.')){status.textContent='Importação cancelada.';return;}
-  let done=0;
-  for(let i=0;i<normalized.length;i+=50){
-   const chunk=normalized.slice(i,i+50);
-   const res=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(chunk)});
-   if(!res.ok)throw Error('Após '+done+' leads: '+supabaseError(res.status,await res.text()));
-   done+=chunk.length;status.textContent=done+' de '+normalized.length+' leads importados.';
+  if(!confirm('Importar '+normalized.length+' lead(s) para '+($('importTargetForm').selectedOptions[0]?.textContent||targetForm)+'? Dados inválidos serão deixados em branco e '+ignored+' linha(s) sem dados serão ignoradas.')){status.textContent='Importação cancelada.';return;}
+  let done=0,failed=0;
+  // Envios individuais impedem que uma linha rejeitada cancele toda a planilha.
+  for(const lead of normalized){
+   try{
+    // Em erros de validação do banco, tenta novamente sem os campos opcionais.
+    // Erros de rede, autenticação e permissões não podem ser resolvidos deixando campos vazios.
+    const optional=['intent','knows_consorcio','urgency','has_entry','entry_amount','asset_price','asset','phone','ddd','name'];
+    const payload={...lead};let saved=false;
+    for(let attempt=0;attempt<=optional.length;attempt++){
+     const res=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+     if(res.ok){saved=true;break;}
+     if([401,403,404,429].includes(res.status)||res.status>=500)break;
+     let err={};try{err=await res.json();}catch(e){}
+     const message=String(err.message||err.details||'');
+     const field=optional.find(k=>Object.hasOwn(payload,k)&&(message.includes(k)||message.includes('"'+k+'"')));
+     if(field){delete payload[field];discarded++;continue;}
+     // Sem indicação de campo, não remova valores arbitrariamente.
+     break;
+    }
+    if(saved)done++;else failed++;
+   }catch(e){failed++;}
+   if((done+failed)%10===0)status.textContent=(done+failed)+' de '+normalized.length+' registros processados...';
   }
-  await loadLeads();status.textContent='Importação concluída: '+done+' leads adicionados; '+ignored+' linhas vazias ignoradas.';
+  try{await loadLeads();}catch(e){}
+  status.textContent='Importação finalizada: '+done+' lead(s) salvos, '+failed+' rejeitados pelo banco, '+ignored+' linhas ignoradas e '+discarded+' campos inválidos desconsiderados.';
+  if(failed)status.textContent+=' Se houver rejeições, verifique permissões e campos obrigatórios no Supabase.';
  }catch(err){status.textContent='Erro na importação: '+err.message;}finally{input.value='';}
 }
+
 renderSortRules();
 
 setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
