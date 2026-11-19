@@ -1366,7 +1366,7 @@ function renderLeads(){
  const head=$('leadRows').closest('table').querySelector('thead tr');
  head.innerHTML='<th>Lead</th><th>Bem desejado</th>'+columns.map(c=>'<th>'+esc(c.label)+'</th>').join('')+'<th>Status</th><th>Ações</th>';
  $('leadRows').innerHTML=rows.map(l=>`<tr>
- <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td>${columns.map(c=>'<td>'+esc(getLeadColumnValue(l,c)||'—')+'</td>').join('')}<td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
+ <td><b>${esc(l.name)}</b><br><span class="muted">(${esc(l.ddd)}) ${esc(l.phone)}</span></td><td>${esc(l.asset)}</td>${columns.map(c=>'<td>'+esc(getLeadColumnValue(l,c)||'—')+'</td>').join('')}<td>${statusTag(l.status)}</td><td><div class="actions"><button class="secondary small" onclick="showDetails('${l.id}')">Ver resposta</button><button class="secondary small" onclick="editLead('${l.id}')">Editar</button><button class="danger small" onclick="deleteLead('${l.id}')" title="Excluir este lead definitivamente">Excluir</button></div></td></tr>`).join('');
  $('empty').classList.toggle('hidden',rows.length>0);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1380,7 +1380,7 @@ function showDetails(id){
  ${detail('Telefone','('+l.ddd+') '+l.phone)}${detail('Bem desejado',l.asset)}${detail('Valor do bem',money(l.value))}${detail('Tem entrada?',l.hasEntry)}${detail('Valor da entrada',l.hasEntry==='Sim'?money(l.entry):'Não possui')}${detail('Urgência',l.urgency)}${detail('Conhece consórcio?',l.knows)}${detail('Interesse',l.intent)}${allCrmColumns().filter(c=>!['urgency','knows','intent'].includes(c.key)).map(c=>detail(c.label,getLeadColumnValue(l,c))).join('')}${l.answers.map(item=>detail(item.question,item.answer)).join('')}
  </div>
  <h3 style="font-size:15px;margin:20px 0 8px">Respostas rápidas</h3><div class="field"><label>Selecionar resposta rápida</label><select id="leadMessageTemplate" onchange="updateLeadMessage('${l.id}')"></select></div><div class="message" id="leadMessagePreview">Selecione uma resposta rápida para visualizar a mensagem.</div>
- <div class="actions" style="margin-top:16px"><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button><button class="danger" onclick="deleteLead('${l.id}')">Excluir lead</button></div>
+ <div class="actions" style="margin-top:16px"><button class="secondary" onclick="editLead('${l.id}')">Editar lead</button><button class="primary" ${l.phone?"":"disabled"} onclick="openWhatsApp('${l.id}')">Abrir WhatsApp</button><button class="secondary" onclick="copyMessage('${l.id}')">Copiar mensagem</button><button class="secondary" onclick="setStatus('${l.id}','responded')">Marcar em atendimento</button><button class="danger" onclick="setStatus('${l.id}','closed')">Fechar lead</button><button class="danger" onclick="deleteLead('${l.id}')">Excluir lead</button></div>
  </div></div>`;
  populateLeadMessages(l);
 }
@@ -1412,6 +1412,36 @@ async function setStatus(id,status){
  await adminRequest('status', {id, status:dbStatus});
  closeModal();await loadLeads();
  }catch(e){alert('Não foi possível atualizar o status: '+e.message);}
+}
+
+function editLead(id){
+ const l=getLeads().find(x=>x.id===id);if(!l)return;
+ const field=(label,key,value,type='text')=>`<div class="field"><label for="edit_${key}">${label}</label><input id="edit_${key}" type="${type}" value="${esc(value??'')}"></div>`;
+ $('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><div class="modal-head"><h2>Editar lead</h2><button class="close" onclick="closeModal()">✕</button></div><form id="leadEditForm" onsubmit="saveEditedLead(event,'${l.id}')">
+ ${field('Nome','name',l.name==='Lead sem nome'?'':l.name)}
+ <div class="detail-grid">${field('DDD','ddd',l.ddd)}${field('Telefone','phone',l.phone)}</div>
+ ${field('Bem desejado','asset',l.asset)}
+ ${field('Valor do bem (R$)','value',l.value||'','number')}
+ ${field('Valor da entrada (R$)','entry',l.entry||'','number')}
+ ${field('Urgência','urgency',l.urgency)}
+ ${field('Conhece consórcio?','knows',l.knows)}
+ ${field('Interesse','intent',l.intent)}
+ <p class="hint" id="leadEditStatus" role="status">Campos em branco serão mantidos sem informação.</p>
+ <div class="actions"><button class="primary" type="submit">Salvar alterações</button><button class="secondary" type="button" onclick="closeModal()">Cancelar</button></div></form></div></div>`;
+}
+async function saveEditedLead(event,id){
+ event.preventDefault();const form=event.target,button=form.querySelector('[type=submit]'),message=$('leadEditStatus');
+ const get=k=>$('edit_'+k).value.trim();const ddd=get('ddd').replace(/\D/g,''),phone=get('phone').replace(/\D/g,'');
+ if((ddd||phone)&&(!/^\d{2}$/.test(ddd)||!/^\d{8,9}$/.test(phone))){message.textContent='Informe DDD com 2 dígitos e telefone com 8 ou 9 dígitos, ou deixe ambos vazios.';return;}
+ const number=k=>get(k)===''?null:Number(get(k));
+ const data={name:get('name')||null,ddd:ddd||null,phone:phone||null,asset:get('asset')||null,asset_price:number('value'),entry_amount:number('entry'),urgency:get('urgency')||null,knows_consorcio:get('knows')||null,intent:get('intent')||null};
+ button.disabled=true;message.textContent='Salvando alterações...';
+ try{
+  // A edição usa a sessão administrativa. Não expor credenciais privilegiadas no HTML.
+  const result=await adminRequest('lead_update',{id,...data});
+  if(result?.updated===false)throw Error('O servidor não confirmou a atualização.');
+  closeModal();await loadLeads();
+ }catch(error){message.textContent='Não foi possível salvar: '+error.message+'. A função crm_admin_v1 do Supabase precisa permitir a ação lead_update.';button.disabled=false;}
 }
 
 async function deleteForm(id){
@@ -1462,7 +1492,40 @@ function selectedMessage(l){const sel=$('leadMessageTemplate');const index=sel?.
 function updateLeadMessage(id){const l=getLeads().find(x=>x.id===id);if(l&&$('leadMessagePreview'))$('leadMessagePreview').textContent=selectedMessage(l)||'Nenhuma resposta rápida selecionada. O WhatsApp abrirá sem mensagem preenchida.';}
 const excelColumns=['Nome','DDD','Telefone','Bem desejado','Valor do bem','Valor da entrada','Urgência','Conhece consórcio','Interesse','Formulário'];
 function downloadLeadTemplate(){if(typeof XLSX==='undefined'){alert('Biblioteca Excel indisponível. Verifique sua conexão.');return;}const example=['Maria Silva','31','999999999','Automóvel',50000,5000,'Compra planejada','Sim','Quero contratar','principal'];const ws=XLSX.utils.aoa_to_sheet([excelColumns,example]);ws['!cols']=excelColumns.map(x=>({wch:Math.max(x.length+4,18)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads');XLSX.writeFile(wb,'modelo_importacao_leads.xlsx');}
-async function importLeadExcel(input){const status=$('excelImportStatus');const file=input.files?.[0];if(!file)return;status.textContent='Lendo planilha...';try{if(typeof XLSX==='undefined')throw Error('Biblioteca Excel indisponível. Verifique a conexão.');const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});if(!rows.length)throw Error('A planilha está vazia.');const normalized=rows.map((r,i)=>{const get=k=>String(r[k]??'').trim();const name=get('Nome'),digits=(get('DDD')+get('Telefone')).replace(/\D/g,'');if(!name||digits.length<10||digits.length>11)throw Error('Linha '+(i+2)+': informe nome e telefone com DDD válido.');const formId=get('Formulário')||'principal';if(!Object.hasOwn(forms,formId))throw Error('Linha '+(i+2)+': formulário "'+formId+'" não existe. Use o ID de um formulário cadastrado ou principal.');const entry=moneyNumber(get('Valor da entrada'));return {name,ddd:digits.slice(0,2),phone:digits.slice(2),asset:get('Bem desejado')||'Não informado',asset_price:moneyNumber(get('Valor do bem'))||null,entry_amount:entry,has_entry:entry>0?'Sim':'Não',urgency:get('Urgência')==='Compra planejada'?'Planejamento':get('Urgência'),knows_consorcio:get('Conhece consórcio'),intent:get('Interesse'),status:'Novo',form_id:formId};});if(normalized.length>500)throw Error('Importe no máximo 500 leads por arquivo.');if(!confirm('Importar '+normalized.length+' lead(s) para o CRM?')){status.textContent='Importação cancelada.';return;}status.textContent='Enviando '+normalized.length+' lead(s)...';let done=0;for(let i=0;i<normalized.length;i+=50){const chunk=normalized.slice(i,i+50);const res=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(chunk)});if(!res.ok)throw Error(supabaseError(res.status,await res.text()));done+=chunk.length;status.textContent=done+' de '+normalized.length+' leads importados.';}await loadLeads();status.textContent='Importação concluída: '+done+' leads adicionados.';}catch(err){status.textContent='Erro na importação: '+err.message;}finally{input.value='';}}
+async function importLeadExcel(input){
+ const status=$('excelImportStatus'),file=input.files?.[0];if(!file)return;
+ status.textContent='Lendo planilha...';
+ try{
+  if(typeof XLSX==='undefined')throw Error('Biblioteca Excel indisponível. Verifique a conexão.');
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});
+  if(!rows.length)throw Error('A planilha está vazia.');
+  const normalized=[];let ignored=0;
+  for(let i=0;i<rows.length;i++){
+   const r=rows[i],get=k=>String(r[k]??'').trim();
+   if(Object.values(r).every(v=>!String(v??'').trim())){ignored++;continue;}
+   const ddd=get('DDD').replace(/\D/g,''),phone=get('Telefone').replace(/\D/g,'');
+   const digits=ddd+phone;
+   // Dados ausentes permanecem vazios. Somente números informados são validados.
+   if(digits && (digits.length<10||digits.length>11))throw Error('Linha '+(i+2)+': telefone informado deve conter DDD e 8 ou 9 dígitos.');
+   const formId=get('Formulário')||'principal';
+   if(!Object.hasOwn(forms,formId))throw Error('Linha '+(i+2)+': formulário "'+formId+'" não existe.');
+   const entry=get('Valor da entrada')?moneyNumber(get('Valor da entrada')):null;
+   normalized.push({name:get('Nome')||null,ddd:digits?digits.slice(0,2):null,phone:digits?digits.slice(2):null,asset:get('Bem desejado')||null,asset_price:get('Valor do bem')?moneyNumber(get('Valor do bem')):null,entry_amount:entry,has_entry:entry===null?null:entry>0?'Sim':'Não',urgency:get('Urgência')||null,knows_consorcio:get('Conhece consórcio')||null,intent:get('Interesse')||null,status:'Novo',form_id:formId});
+  }
+  if(!normalized.length)throw Error('Nenhum lead preenchido para importar.');
+  if(normalized.length>500)throw Error('Importe no máximo 500 leads por arquivo.');
+  if(!confirm('Importar '+normalized.length+' lead(s)? Campos não preenchidos permanecerão vazios.')){status.textContent='Importação cancelada.';return;}
+  let done=0;
+  for(let i=0;i<normalized.length;i+=50){
+   const chunk=normalized.slice(i,i+50);
+   const res=await fetch(supabaseEndpoint(),{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'Prefer':'return=minimal'},body:JSON.stringify(chunk)});
+   if(!res.ok)throw Error('Após '+done+' leads: '+supabaseError(res.status,await res.text()));
+   done+=chunk.length;status.textContent=done+' de '+normalized.length+' leads importados.';
+  }
+  await loadLeads();status.textContent='Importação concluída: '+done+' leads adicionados; '+ignored+' linhas vazias ignoradas.';
+ }catch(err){status.textContent='Erro na importação: '+err.message;}finally{input.value='';}
+}
 renderSortRules();
 
 setInterval(()=>{if(signedIn&&activePage==='dashboard'&&!document.hidden)loadLeads();},15000);
